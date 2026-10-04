@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 6 — Reflection
-**Last completed:** 20 Digital Diary
-**Next:** 21 Weekly Review
+**Last completed:** 21 Weekly Review
+**Next:** 22 Finance Tracker
 
 ---
 
@@ -54,7 +54,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 * [x] 19 End-of-Day Review
 * [x] 20 Digital Diary
-* [ ] 21 Weekly Review
+* [x] 21 Weekly Review
 
 ### Phase 7 — Personal Finance
 
@@ -157,3 +157,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **19 — End-of-Day Review UI:** `/reviews` swapped from Placeholder; page = header ("Reviews", subtitle "Close the loop — compare the plan with what actually happened, then steer tomorrow.") + the self-contained `EndOfDayReview` section (stats tiles Planned/Completed/Partial/Missed on `bg-surface-secondary`, focus-time line via `formatMinutes`, RHF+zod notes form ≤2000 chars, "Last saved {formatTimestamp}" once a review exists, and a "Continue your evening" row linking to /diary, /learning, /). Query ownership lives inside the section, so feature 21 can stack the Weekly Review section on the same page without a combined loading gate. Verified: tiles matched the seeded day (4 planned / 1 completed / 1 partial / 1 missed), save → "Review saved" toast + DB row snapshot exact, task status change → tiles refreshed (2 completed, 0 missed) and re-save → "Review updated" with still exactly 1 row, notes prefill after reload, cross-link navigation, console clean.
 * **20 — Diary data layer:** `services/diary.service.js` owns the `diary_entries` SQL (list/create/update/delete); `hooks/useDiary.js` owns key `["diary"]` + one mutation per operation. Content is **required** (trimmed non-empty, ≤5000 chars) — unlike Learning notes, an empty diary entry is not meaningful, so the schema has both a `.min(1)` guard and zod max. Date trimmed required + `DATE_REGEX` refine. `listDiaryEntries()` orders SQL-side by `date DESC, created_at DESC` (same anchor logic as learning). Update/delete use the standard `rowsAffected === 0` guard. **No new migration was needed** — the `diary_entries` table has existed since migration id 1.
 * **20 — Diary UI:** `/diary` swapped from Placeholder; page = header ("Digital Diary", subtitle "Free-form writing, separate from reviews — just for you.") + "New entry" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `DiaryCard`s (date chip + "Added {formatTimestamp}", pre-wrap `break-words` content, edit/trash with the inline confirm "Remove this entry?"). `DiaryFormDialog` (RHF+zod: date `Input type="date"` "Entry date" defaulting to today, content `Textarea rows={6}`; `sm:max-w-[480px]`) serves add and edit with the primitive-dep reset. Verified end-to-end: add → "Diary entry saved" toast + card with date chip "Oct 4, 2026" and timestamp, edit prefill → "Diary entry updated", inline confirm → "Diary entry removed" + EmptyState returns, console clean.
+* **21 — Weekly review data layer:** `review.service.js` gained the `weekly_reviews` SQL — `getWeeklyReview(weekStart)` + `saveWeeklyReview(...)`. The week is keyed by its **Monday** (`week_start` is the upsert key): the component computes `startOfWeek`/`endOfWeek` with `weekStartsOn: 1` (date-fns) and stores both bounds; the service refuses a missing `week_start`/`week_end`. Save is the same service-level upsert as the daily review (SELECT id by week_start → UPDATE or INSERT) — one review per week. All five fields (`what_went_well`, `what_did_not_go_well`, `accomplishments`, `changes_for_next_week`, `priorities`) are **optional** text trimmed before write — a partial weekly review is valid by design, unlike diary entries. `hooks/useReviews.js` gained `useWeeklyReview(weekStart)` (key `["reviews","weekly",weekStart]`) + `useSaveWeeklyReview()` (invalidates `["reviews"]`). No new migration needed — the table has existed since migration id 1.
+* **21 — Weekly Review UI:** `WeeklyReview` is a self-contained section like `EndOfDayReview` (owns its query, mutation, toasts) stacked below it on `/reviews` — the query ownership split means the two sections load independently (two section cards during loading). Header: "Weekly Review" + "Sep 28, 2026 – Oct 4, 2026 — zoom out on the week, then steer the next one." (range from the Monday–Sunday computation) + "Last saved {formatTimestamp}" once saved. Five RHF+zod Textareas rows 3, all optional trimmed ≤2000: Accomplishments / What went well / What didn't go well / Changes for next week / Priorities for next week. Save button "Save weekly review" → "Saving…" with Loader2. Verified: section stacks below the daily review, range showed the correct Mon–Sun week containing today, save → "Weekly review saved" + DB row exact + "Last saved", reload → all five fields prefilled, edit → "Weekly review updated" with still exactly 1 row (upsert), console clean.

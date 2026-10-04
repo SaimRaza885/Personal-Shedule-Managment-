@@ -1,4 +1,5 @@
 import { EndOfDayReview } from "@/components/reviews/EndOfDayReview";
+import { WeeklyReview } from "@/components/reviews/WeeklyReview";
 
 export function Reviews() {
   return (
@@ -12,6 +13,7 @@ export function Reviews() {
       </div>
 
       <EndOfDayReview />
+      <WeeklyReview />
     </div>
   );
 }

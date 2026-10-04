@@ -57,6 +57,111 @@ export async function getDailyReview(date) {
 }
 
 /**
+ * @typedef {Object} WeeklyReview
+ * @property {string} id
+ * @property {string} weekStart   yyyy-MM-dd (Monday)
+ * @property {string} weekEnd     yyyy-MM-dd (Sunday)
+ * @property {string} whatWentWell
+ * @property {string} whatDidNotGoWell
+ * @property {string} accomplishments
+ * @property {string} changesForNextWeek
+ * @property {string} priorities
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ */
+
+function toWeeklyReview(row) {
+  return {
+    id: row.id,
+    weekStart: row.week_start,
+    weekEnd: row.week_end,
+    whatWentWell: row.what_went_well,
+    whatDidNotGoWell: row.what_did_not_go_well,
+    accomplishments: row.accomplishments,
+    changesForNextWeek: row.changes_for_next_week,
+    priorities: row.priorities,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * The stored review for a week (keyed by its Monday), or null when none
+ * exists yet.
+ * @param {string} weekStart  yyyy-MM-dd
+ * @returns {Promise<WeeklyReview|null>}
+ */
+export async function getWeeklyReview(weekStart) {
+  try {
+    const row = await queryOne(
+      "SELECT * FROM weekly_reviews WHERE week_start = ?",
+      [weekStart],
+    );
+    return row ? toWeeklyReview(row) : null;
+  } catch (error) {
+    console.error("[review.service:getWeeklyReview]", error);
+    throw new Error("Could not load your weekly review. Please try again.");
+  }
+}
+
+/**
+ * Save (or update) the review for a week. One review per week — saving
+ * again updates the same row instead of adding duplicates.
+ * @param {{ weekStart: string, weekEnd: string, whatWentWell?: string,
+ *   whatDidNotGoWell?: string, accomplishments?: string,
+ *   changesForNextWeek?: string, priorities?: string }} input
+ * @returns {Promise<string>} id of the saved review
+ */
+export async function saveWeeklyReview({
+  weekStart,
+  weekEnd,
+  whatWentWell = "",
+  whatDidNotGoWell = "",
+  accomplishments = "",
+  changesForNextWeek = "",
+  priorities = "",
+}) {
+  if (!weekStart) throw new Error("Missing week start date");
+  if (!weekEnd) throw new Error("Missing week end date");
+
+  const now = new Date().toISOString();
+  const texts = [
+    whatWentWell.trim(),
+    whatDidNotGoWell.trim(),
+    accomplishments.trim(),
+    changesForNextWeek.trim(),
+    priorities.trim(),
+  ];
+
+  try {
+    const existing = await queryOne(
+      "SELECT id FROM weekly_reviews WHERE week_start = ?",
+      [weekStart],
+    );
+    if (existing) {
+      await execute(
+        `UPDATE weekly_reviews
+         SET week_end = ?, what_went_well = ?, what_did_not_go_well = ?, accomplishments = ?, changes_for_next_week = ?, priorities = ?, updated_at = ?
+         WHERE id = ?`,
+        [weekEnd, ...texts, now, existing.id],
+      );
+      return existing.id;
+    }
+
+    const id = crypto.randomUUID();
+    await execute(
+      `INSERT INTO weekly_reviews (id, week_start, week_end, what_went_well, what_did_not_go_well, accomplishments, changes_for_next_week, priorities, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, weekStart, weekEnd, ...texts, now, now],
+    );
+    return id;
+  } catch (error) {
+    console.error("[review.service:saveWeeklyReview]", error);
+    throw new Error("Could not save your weekly review. Please try again.");
+  }
+}
+
+/**
  * Derive today's numbers from the plan and the focus log. "Partial" means
  * started but not finished; cancelled blocks were deliberately called off,
  * so they count as neither partial nor missed.
