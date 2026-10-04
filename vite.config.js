@@ -14,5 +14,10 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    // Cargo locks files under src-tauri/target while building; watching it
+    // crashes the Vite file watcher with EBUSY during Rust builds.
+    watch: {
+      ignored: ["**/src-tauri/**"],
+    },
   },
 });

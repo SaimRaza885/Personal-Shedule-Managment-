@@ -10,6 +10,7 @@ build/
 # Tauri
 target/
 src-tauri/target/
+src-tauri/gen/
 
 # IDE
 .idea/
