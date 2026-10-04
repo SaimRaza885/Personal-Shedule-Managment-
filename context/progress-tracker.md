@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 4 — Capture & Ideas
-**Last completed:** 13 Overload Protection
-**Next:** 14 Quick Capture
+**Last completed:** 14 Quick Capture
+**Next:** 15 Ideas Vault
 
 ---
 
@@ -41,7 +41,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 4 — Capture & Ideas
 
-* [ ] 14 Quick Capture
+* [x] 14 Quick Capture
 * [ ] 15 Ideas Vault
 
 ### Phase 5 — Learning
@@ -140,3 +140,6 @@ Update this file after every completed feature. Any AI agent reading this should
 * **13 — Settings data layer:** `services/settings.service.js` is the first consumer of the `settings` key/value table (`getAvailableMinutes` / `setAvailableMinutes`), with `SETTING_KEYS` in `constants.js` (single source for key names, no inline literals). Reads are defensive: missing/invalid/non-positive → `DEFAULT_VALUES.AVAILABLE_MINUTES` (480). `hooks/useSettings.js` owns key `["settings","available-minutes"]`. All services are `async` even for synchronous-feeling reads, keeping the data-layer contract uniform.
 * **13 — Overload computation (read-only by design):** `summarizeOverload(schedule, availableMinutes)` in `today.service.js` sums `plannedMinutes` of blocks that are not completed/cancelled and flags `overloaded` when the remainder **strictly** exceeds available time (480 vs 480 shows nothing — the day fits exactly). `useTodayData()` composes query + computation and returns `overload`. The banner never mutates the plan — verified byte-identical schedule JSON before/after all banner interactions; copy explicitly says "nothing changes unless you change it".
 * **13 — Overload banner + AvailableTimeDialog:** `OverloadBanner` (role="alert", warning token family `border-warning-light`/`bg-warning-lightest`/`text-warning-foreground`, `CircleAlert` icon) sits between the Top 3 / Progress grid and the Schedule card on Today; its "Available time" button opens `AvailableTimeDialog` (same RHF+zod conventions as `ScheduleBlockDialog`). Hours input validated in two layers: native `min=0.25 max=24 step=0.25` + zod (required message on empty, range message on out-of-range). Verified: 480/480 no banner → 300 min banner "Planned work: 8h · Available time: 5h" → dialog save 5h→10h toast + banner clears → completing a 150-min block drops remaining to 5h 30m (completed work is excluded).
+* **14 — Quick capture data layer:** `services/quick-capture.service.js` owns the `quick_captures` SQL (list/create/convert-to-task/delete); `hooks/useCaptures.js` owns key `["captures"]` + one mutation per operation. `CONVERTED_TYPE` (`task`/`idea`) added to `constants.js` — the `idea` value is already reserved for feature 15. `listCaptures()` sorts in JS: unconverted first, converted sink below (stable, so the inbox reading order stays newest-first within each group). Convert guards: "That capture no longer exists." (missing row) and "This capture has already been organized." (double convert). Delete uses the standard `rowsAffected === 0` guard.
+* **14 — One-click convert rule:** `convertCaptureToTask` creates the task + marks the capture `converted_type/converted_id` **inside one transaction** (raw BEGIN/COMMIT/ROLLBACK, same pattern as `schedule.service`). Defaults are deliberate — priority medium, status not_started, planned 30 min — and there is no dialog: capture is meant to be frictionless, organization happens later on /tasks. Long thoughts map cleanly: content > 120 chars (`MAX_TASK_TITLE`) → title truncated to 120 chars ending "…" and the **full content becomes the task description**, so nothing is lost. Deleting a converted capture never touches the created task.
+* **14 — Capture UI:** `/quick-capture` = `CaptureForm` (single textarea, zod: non-empty trimmed, submit on Ctrl/Cmd+Enter, refocuses after save) above the "Inbox" list of `CaptureList` rows. Converted rows stay visible (dimmed + "Converted to task" badge) so nothing silently vanishes; they only offer delete. Delete uses the inline confirm pattern (`confirmingId` state in the list). Sidebar gained a 15th entry "Capture" (Inbox icon) after Focus. "Convert to idea" is deliberately deferred to feature 15 when the ideas data layer exists.

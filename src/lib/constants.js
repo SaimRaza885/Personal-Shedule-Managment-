@@ -76,6 +76,12 @@ export const CONCEPT_STATUS = Object.freeze({
   REVIEW: "review",
 });
 
+// Types a quick capture can be organized into
+export const CONVERTED_TYPE = Object.freeze({
+  TASK: "task",
+  IDEA: "idea",
+});
+
 // Keys for the local settings store
 export const SETTING_KEYS = Object.freeze({
   AVAILABLE_MINUTES: "available_minutes",
