@@ -172,6 +172,32 @@ Same dialog conventions as `GoalFormDialog`. Title "New task" / "Edit task". Pro
 **Route registration** — `src/routes/index.jsx`
 `/tasks` → Tasks (child of the AppShell layout route).
 
+### Focus section (feature 10)
+
+**Focus page** — `src/pages/focus/Focus.jsx`
+Header row: `h1 text-xl font-semibold text-text-primary` "Focus" + `text-sm text-text-muted` subtitle "Deep work, one task at a time." Body priority: post-session `SessionSummary` (state `summary`) → active session card → "Start a focus session" card. Start card (same section card): title "Start a focus session" + candidate list `ul.divide-y divide-border-light`, row `flex items-center gap-4 py-3`: time col `w-36 shrink-0 text-sm text-text-secondary` (`formatTime` range), title `min-w-0 flex-1 truncate text-sm font-medium text-text-primary`, meta `text-xs text-text-muted` "{plannedMinutes} min", Start `Button size="sm"` with `Play size-4`. Empty candidates: `EmptyState` (Timer) "Nothing to focus on yet" with `<Button asChild variant="outline" size="sm"><Link to="/">Plan your day</Link></Button>`. Then `FocusHistory`. Loading/error: page-level `LoadingState` / `ErrorState` (retry refetches active + history). Toasts: "Focus session started", "Session paused", "Back to it"; complete/cancel show the summary instead of a toast. `friendlyError(error)` strips to the thrown message.
+
+**FocusTimer** — `src/components/focus/FocusTimer.jsx`
+Section card. Props `{ session, children }`. 1s `setInterval` ticker only while `status === FOCUS_STATUS.STARTED` (effect deps `[running, session.startedAt]`, immediate `setNowMs(Date.now())` so resume re-reads wall clock instantly). Clock `text-4xl font-semibold tracking-tight text-text-primary tabular-nums` via `formatElapsed`; status badge top-right via `focusBadgeClass`; task title `text-base font-semibold text-text-primary` (`?? "Task removed"`). Progress track `mt-3 h-1 rounded-full bg-border-light`, fill `bg-accent` (over-plan → `bg-warning`) with inline width. Meta line `text-sm text-text-secondary`: "{n} min planned", "{n} steps remaining", "Over plan" (`text-warning-foreground`). `children` render in `mt-6 border-t border-border-light pt-4` (the controls).
+
+**FocusControls** — `src/components/focus/FocusControls.jsx`
+Props `{ status, pending, onPause, onResume, onComplete, onCancel }`. Running → `Button variant="outline"` with `Pause size-4` "Pause"; paused → `variant="outline"` with `Play size-4` "Resume"; "Complete session" default variant with `Check size-4`; "Cancel" `variant="ghost"` with `X size-4` swaps to two-step confirm (`text-xs text-text-muted` "Discard this session?" + ghost "Keep going" + `variant="destructive" size="sm"` "Cancel session"). All disabled while `pending`; confirm state is local `useState` reset on confirm.
+
+**SessionSummary** — `src/components/focus/SessionSummary.jsx`
+Section card shown after complete/cancel. Props `{ session, onDismiss }`. Icon circle `rounded-full p-2.5`: completed → `bg-success-light` + `CircleCheck text-success-foreground`; cancelled → `bg-surface-secondary` + `CircleX text-text-muted`. Heading `text-base font-semibold text-text-primary` "Session complete" / "Session cancelled"; body `text-sm text-text-secondary`: "{taskTitle} — {formatMinutes(actual)} of {formatMinutes(planned)} planned."; "Done" `Button variant="outline" size="sm"` → clears the summary state.
+
+**FocusHistory** — `src/components/focus/FocusHistory.jsx`
+"Recent sessions" section card. Props `{ items }`. Rows `ul.divide-y divide-border-light`, row `flex items-center gap-4 py-3`: `w-40 shrink-0 text-sm text-text-secondary` timestamp (`formatTimestamp`), title `min-w-0 flex-1 truncate text-sm font-medium text-text-primary`, meta `text-sm text-text-muted` "{actual} of {planned}", status badge via `focusBadgeClass`. Empty: `EmptyState` (History) "No focus sessions yet" — "Start a session and your focus time will be recorded here."
+
+**Focus status badges** — `src/components/focus/focusStatus.js`
+Mirrors `taskStatus.js` for `FOCUS_STATUS`. `focusStatusLabel` (started → "Running") / `focusBadgeClass` share base `rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap`; tones: started `bg-accent-light text-accent`, paused `bg-warning-light text-warning-foreground`, completed `bg-success-light text-success-foreground`, cancelled `bg-surface-secondary text-text-muted`. New focus status UI must reuse these helpers.
+
+**Focus data layer** — `src/services/focus.service.js` + `src/hooks/useFocus.js`
+`focus.service.js` owns focus_sessions SQL (see progress-tracker 10 notes); `useFocus.js` exposes `useActiveFocusSession()`, `useFocusHistory(limit)`, `useFocusCandidates()` and one `useMutation` per operation. Components never touch SQL directly. Timer ticks are local `useState` — not a query — so no polling.
+
+**NowCard focus state (update)** — `src/components/today/NowCard.jsx`
+Feature 10 wired the Start button: props gained `focusActive` / `startPending`; while a session is open the button reads "Focus in progress" (disabled while starting) and Today's `handleStart` routes to `/focus` instead of double-starting.
+
 ### shadcn/ui primitives (generated, JS mode)
 
 Live in `src/components/ui/` (button, input, textarea, badge, card, label, select, dialog, table, tabs, dropdown-menu, form). Generated by `npx shadcn@latest add` — do not hand-edit. `cn()` imports rewritten to `@/lib/utils`. shadcn v4 emits `import { Slot } from "radix-ui"` (unified radix package) — keep the `radix-ui` and `cn` npm dependencies for future CLI adds.

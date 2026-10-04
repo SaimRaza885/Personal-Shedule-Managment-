@@ -6,6 +6,7 @@ import { GoalDetails } from "@/pages/goals/GoalDetails";
 import { Projects } from "@/pages/work/Projects";
 import { ProjectDetails } from "@/pages/work/ProjectDetails";
 import { Tasks } from "@/pages/work/Tasks";
+import { Focus } from "@/pages/focus/Focus";
 import { Placeholder } from "@/pages/Placeholder";
 
 export const router = createBrowserRouter([
@@ -19,7 +20,7 @@ export const router = createBrowserRouter([
       { path: "/projects", element: <Projects /> },
       { path: "/projects/:id", element: <ProjectDetails /> },
       { path: "/tasks", element: <Tasks /> },
-      { path: "/focus", element: <Placeholder title="Focus" /> },
+      { path: "/focus", element: <Focus /> },
       { path: "/learning", element: <Placeholder title="What I Learned" /> },
       { path: "/concepts", element: <Placeholder title="Tech Concepts" /> },
       { path: "/watch-later", element: <Placeholder title="Watch Later" /> },

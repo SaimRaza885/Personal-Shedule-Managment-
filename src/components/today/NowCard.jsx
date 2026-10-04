@@ -10,7 +10,7 @@ function taskSubtitle(task, total, remaining) {
   return task.status === "not_started" ? "Ready to start" : "In progress";
 }
 
-export function NowCard({ current, upcoming, onStart }) {
+export function NowCard({ current, upcoming, onStart, focusActive = false, startPending = false }) {
   const task = current ?? upcoming;
   return (
     <section className="rounded-lg border border-border bg-surface p-6">
@@ -49,9 +49,9 @@ export function NowCard({ current, upcoming, onStart }) {
             </div>
           </div>
           {current && (
-            <Button onClick={() => onStart(task)}>
+            <Button onClick={() => onStart(task)} disabled={startPending}>
               <Play className="size-4" />
-              Start
+              {focusActive ? "Focus in progress" : "Start"}
             </Button>
           )}
         </div>

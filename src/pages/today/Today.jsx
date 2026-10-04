@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { NowCard } from "@/components/today/NowCard";
 import { TopThreeCard } from "@/components/today/TopThreeCard";
@@ -8,6 +9,7 @@ import { ScheduleCard } from "@/components/today/ScheduleCard";
 import { ScheduleBlockDialog } from "@/components/schedule/ScheduleBlockDialog";
 import { Button } from "@/components/ui/button";
 import { useTodayData } from "@/hooks/useToday";
+import { useActiveFocusSession, useStartFocusSession } from "@/hooks/useFocus";
 import {
   useAddScheduleBlock,
   useRemoveScheduleBlock,
@@ -39,8 +41,11 @@ export function Today() {
     isError,
     refetch,
   } = useTodayData();
+  const navigate = useNavigate();
   const [dialog, setDialog] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const activeFocusQuery = useActiveFocusSession();
+  const startFocus = useStartFocusSession();
   const addBlock = useAddScheduleBlock();
   const updateBlock = useUpdateScheduleBlock();
   const removeBlock = useRemoveScheduleBlock();
@@ -52,8 +57,18 @@ export function Today() {
   const topThreeMaxed = topThree.length >= DEFAULT_VALUES.DAILY_TOP_THREE_MAX;
   const pickCandidates = candidatesQuery.data ?? [];
 
-  const handleStart = (task) => {
-    console.log("[Today] start task", task?.id);
+  const handleStart = async (task) => {
+    if (activeFocusQuery.data) {
+      navigate("/focus");
+      return;
+    }
+    try {
+      await startFocus.mutateAsync({ taskId: task.taskId });
+      toast.success("Focus session started");
+      navigate("/focus");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
   };
 
   const handlePickTopThree = async (candidate) => {
@@ -138,7 +153,13 @@ export function Today() {
 
   return (
     <div className="space-y-6">
-      <NowCard current={current} upcoming={upcoming} onStart={handleStart} />
+      <NowCard
+        current={current}
+        upcoming={upcoming}
+        onStart={handleStart}
+        focusActive={Boolean(activeFocusQuery.data)}
+        startPending={startFocus.isPending}
+      />
 
       <div className="grid grid-cols-2 gap-6">
         <TopThreeCard

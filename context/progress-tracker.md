@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 2 — Goals & Work
-**Last completed:** 09 Tasks & Task Steps
-**Next:** 10 Focus Sessions
+**Phase:** Phase 3 — Focus & Execution
+**Last completed:** 10 Focus Sessions
+**Next:** 11 Distraction Log
 
 ---
 
@@ -34,7 +34,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 3 — Focus & Execution
 
-* [ ] 10 Focus Sessions
+* [x] 10 Focus Sessions
 * [ ] 11 Distraction Log
 * [ ] 12 Low-Energy Mode
 * [ ] 13 Overload Protection
@@ -127,3 +127,7 @@ Update this file after every completed feature. Any AI agent reading this should
 * **08 — Projects data layer:** `services/project.service.js` owns projects SQL; `hooks/useProjects.js` owns query keys `["projects"]`, `["project", id]`, `["project", projectId, "tasks"]` and one mutation per operation. `listProjects()` computes `tasksTotal` / `tasksCompleted` via subselects and orders by **status rank in JS** (`STATUS_ORDER` array from `PROJECT_STATUS`, then `rows.sort`) instead of a SQL CASE with literal status strings — code-standards forbids inline enum literals in SQL. Project delete relies on `tasks.project_id ON DELETE SET NULL`: tasks keep their records and just lose the link (the confirm copy says so). **Cross-domain invalidation:** `useUpdateGoal`/`useDeleteGoal` also invalidate `["projects"]` because project cards show the linked goal's title — verified by deleting a goal and watching project chips clear without a reload. `listProjectTasks` is read-only for now — task management is feature 09.
 * **09 — Tasks data layer:** `services/task.service.js` owns tasks + task_steps SQL; `hooks/useTasks.js` owns query keys `["tasks", status ?? "all"]` and the deliberately distinct `["task", taskId, "steps"]`, plus one mutation per operation. Sorting is `STATUS_ORDER` rank (in_progress first) then `PRIORITY_ORDER` rank, done in JS after `ORDER BY created_at DESC` (no enum literals in SQL). `setTaskStatus` is **the single implementation of task status transitions** — documented in the service; `TaskStatus.jsx` is the single toggle component and defines the not_started↔completed toggle in one place. Step reordering is not in scope for v1; new steps get `sort_order = COALESCE(MAX(sort_order), -1) + 1` via a subselect inside the INSERT. `setTaskStepCompleted` takes an explicit target state (not a toggle) so retries can never double-toggle. **Cross-domain invalidation:** task mutations invalidate `["tasks"]`, `["project"]`, `["projects"]`, `["today"]`; step mutations invalidate `["task"]`, `["tasks"]`, `["today"]` — the Today hero reads `stepsTotal`/`stepsRemaining` per scheduled task, verified live (hero showed "2 of 2 steps remaining" and the card footer updated its `0 of 2 steps` count). Task delete relies on FK cascades (`task_steps` CASCADE, schedule/top-3 rows CASCADE) — verified by deleting a task with steps and probing `task_steps` for orphans. The task form deliberately has **no schedule fields** (daily_schedules owns scheduling) and no milestone select (nothing consumes that link yet). The Today hero's Start button still logs only — the status transition it will call exists (`setTaskStatus`); focus-session wiring is feature 10.
 * **09 — Add-task entry point:** `/tasks` is the full management surface (filter, steps, edit, delete); `ProjectDetails` keeps its read-only task card but gained an "Add task" action that opens the shared `TaskFormDialog` with `defaultProjectId` pre-filled. Both surfaces call the same hook mutations, so the project view and the tasks list stay in sync via query invalidation.
+* **10 — Focus data layer:** `services/focus.service.js` owns focus_sessions SQL; `hooks/useFocus.js` owns query keys `["focus","active"]`, `["focus","history",limit]`, `["focus","candidates",date]` and one mutation per operation (start/pause/resume/complete/cancel), each invalidating `["focus"]`, `["today"]`, `["tasks"]`, `["task"]`, `["project"]`, `["projects"]` (start flips the task to in_progress; finish rolls actual_minutes up to the task). Candidates reuse `today.service.getTodaySchedule(date)` filtered to actionable blocks — focus never invents its own schedule view.
+* **10 — No resume column:** focus_sessions has no paused-at/resume column, so pause stores elapsed minutes in `actual_minutes` and resume shifts `started_at` back by that amount (`new Date(Date.now() - actualMinutes * 60000)`). In every open state the invariant "elapsed = now − started_at" holds, which is exactly what the timer renders and what finish re-reads. Verified conservation with a real 2-minute session: pause stored 2, resume shifted started_at by 2 min, clock continued at 02:04 instead of restarting, complete rolled +2 onto the task's `actual_minutes` and set `ended_at`.
+* **10 — Single active session + task rollup:** `startFocusSession` guards against a second open session ("You already have a focus session in progress.") and auto-transitions the task not_started → in_progress via `setTaskStatus` (the single status-transition implementation from 09). `finishSession` handles complete AND cancel in one path: it refuses already-finished sessions, computes final actual minutes from wall-clock when running, and adds them to `tasks.actual_minutes` for both outcomes. Actively-focusing state is surfaced on Today's NowCard ("Focus in progress" replaces the Start button and routes to /focus).
+* **10 — Focus UI:** `/focus` page = active-session timer (1s ticker only while running) / candidates list / history, plus a post-session summary card (SessionSummary) shown after complete/cancel — the summary IS the feedback, so no extra toast there. Timer renders from `startedAt` + now rather than counting in memory, so a reload restores the correct elapsed time (verified by deep-link reload: clock resumed at 00:29).
