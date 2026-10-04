@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 0 — Foundation & Setup
-**Last completed:** 01 Project Scaffold & Design Tokens
-**Next:** 02 SQLite Database Foundation
+**Last completed:** 02 SQLite Database Foundation
+**Next:** 03 Tauri Desktop Foundation
 
 ---
 
@@ -17,7 +17,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 0 — Foundation & Setup
 
 * [x] 01 Project Scaffold & Design Tokens
-* [ ] 02 SQLite Database Foundation
+* [x] 02 SQLite Database Foundation
 * [ ] 03 Tauri Desktop Foundation
 
 ### Phase 1 — Today & Daily Execution
@@ -115,3 +115,5 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Notes
 
 *Add notes here as the build progresses — workarounds, patterns, anything that differs from the context files.*
+
+* **02 — Dev database engine:** `src/lib/database.js` routes to tauri-plugin-sql inside the desktop shell and to a sql.js (SQLite WASM) engine in a plain browser, so features can be developed and verified without the Rust toolchain. The dev engine persists to localStorage and exposes the same `execute`/`select` surface. All SQL uses `?` placeholders — the `$1` style breaks sql.js. Migrations (`src/lib/migrations.js`) run once per connection and are recorded in `_migrations`.

@@ -1,4 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
+import { getDevDb } from "./devDatabase";
+import { runMigrations } from "./migrations";
 
 const SQLITE_DB_URL = "sqlite:schedule.db";
 
@@ -15,16 +17,19 @@ export function isTauri() {
 
 /**
  * Singleton connection to the local SQLite database.
- * @returns {Promise<import("@tauri-apps/plugin-sql").default>}
+ * Uses tauri-plugin-sql on desktop; the sql.js dev engine in a browser.
+ * Runs pending migrations once per connection.
+ * @returns {Promise<{ execute: Function, select: Function, close?: Function }>}
  */
 export async function getDb() {
-  if (!isTauri()) {
-    throw new Error(
-      "Database is only available inside the desktop application."
-    );
-  }
   if (!dbPromise) {
-    dbPromise = Database.load(SQLITE_DB_URL);
+    dbPromise = (async () => {
+      const db = isTauri()
+        ? await Database.load(SQLITE_DB_URL)
+        : await getDevDb();
+      await runMigrations(db);
+      return db;
+    })();
   }
   return dbPromise;
 }
@@ -33,7 +38,7 @@ export async function getDb() {
  * Run a parameterized write query.
  * @param {string} sql
  * @param {unknown[]} [params]
- * @returns {Promise<import("@tauri-apps/plugin-sql").QueryResult>}
+ * @returns {Promise<{ rowsAffected: number }>}
  */
 export async function execute(sql, params = []) {
   const db = await getDb();
