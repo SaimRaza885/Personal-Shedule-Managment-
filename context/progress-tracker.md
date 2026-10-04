@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 2 — Goals & Work
-**Last completed:** 07 Goals & Milestones
-**Next:** 08 Projects & Work
+**Last completed:** 08 Projects & Work
+**Next:** 09 Tasks & Task Steps
 
 ---
 
@@ -29,7 +29,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 2 — Goals & Work
 
 * [x] 07 Goals & Milestones
-* [ ] 08 Projects & Work
+* [x] 08 Projects & Work
 * [ ] 09 Tasks & Task Steps
 
 ### Phase 3 — Focus & Execution
@@ -124,3 +124,4 @@ Update this file after every completed feature. Any AI agent reading this should
 * **06 — Top 3 mutations:** `services/top-three.service.js` owns add/remove/move SQL; `hooks/useTopThree.js` owns candidates query (key `["today","top-three-candidates",date]`) + three mutations invalidating `["today"]`. Add assigns `position = COALESCE(MAX(position),0)+1` inside a transaction with guards: task must be scheduled today and actionable, not already in the Top 3, and count `< DEFAULT_VALUES.DAILY_TOP_THREE_MAX`. Remove and move rewrite positions via **delete + re-insert inside the transaction**: `UNIQUE(date, position)` in SQLite is always immediate per-row (DEFERRABLE applies only to FKs), so swapping positions with UPDATE collides on the intermediate state — and with only 3 rows there is no free temp value inside the 1..3 CHECK. Same ids/created_at are preserved on re-insert. Candidates = today's scheduled, actionable, not-yet-picked tasks ordered by start_time.
 * **07 — Goals data layer:** `services/goal.service.js` owns goals + milestones SQL; `hooks/useGoals.js` owns query keys `["goals"]`, `["goal", id]`, `["goal", id, "milestones"]` and one mutation per operation. Milestone mutations invalidate `["goal", goalId, "milestones"]` + `["goals"]` (list cards show rollup progress). `listGoals()` computes `milestonesTotal` / `milestonesCompleted` via subselects; order is `year IS NULL, year DESC, created_at DESC` (dated goals first, newest year first, no-year last). `getGoal` returns `null` (not `undefined`) — React Query v5 throws on `undefined`. **Goal delete relies on FK CASCADE** — services never delete milestone rows manually; projects/tasks keep their records via `ON DELETE SET NULL`.
 * **07 — devDatabase FK pragma fix (important):** sql.js defaults `foreign_keys` OFF while tauri-plugin-sql (sqlx) defaults it ON — enabling it once at connection creation is **not enough**: `db.export()` (used by `persist()` after every write) internally closes and reopens the connection, silently resetting all connection-level pragmas. The dev engine now re-runs `PRAGMA foreign_keys = ON;` after every export. Without this, CASCADE / SET NULL worked only until the first write of a session, then deletes left orphaned rows silently. Verified with orphan-count probes (`milestones WHERE goal_id NOT IN (SELECT id FROM goals)`).
+* **08 — Projects data layer:** `services/project.service.js` owns projects SQL; `hooks/useProjects.js` owns query keys `["projects"]`, `["project", id]`, `["project", projectId, "tasks"]` and one mutation per operation. `listProjects()` computes `tasksTotal` / `tasksCompleted` via subselects and orders by **status rank in JS** (`STATUS_ORDER` array from `PROJECT_STATUS`, then `rows.sort`) instead of a SQL CASE with literal status strings — code-standards forbids inline enum literals in SQL. Project delete relies on `tasks.project_id ON DELETE SET NULL`: tasks keep their records and just lose the link (the confirm copy says so). **Cross-domain invalidation:** `useUpdateGoal`/`useDeleteGoal` also invalidate `["projects"]` because project cards show the linked goal's title — verified by deleting a goal and watching project chips clear without a reload. `listProjectTasks` is read-only for now — task management is feature 09.

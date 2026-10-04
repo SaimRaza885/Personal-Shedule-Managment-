@@ -38,6 +38,8 @@ export function useUpdateGoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
       queryClient.invalidateQueries({ queryKey: ["goal"] });
+      // Project cards show the linked goal's title.
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
@@ -50,6 +52,8 @@ export function useDeleteGoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
       queryClient.invalidateQueries({ queryKey: ["goal"] });
+      // Deleting a goal clears projects.goal_id, changing project cards.
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

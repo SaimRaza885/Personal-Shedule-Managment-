@@ -120,6 +120,32 @@ Route `/goals/:id`. Back link `inline-flex items-center gap-1 text-sm text-text-
 **Route registration** — `src/routes/index.jsx`
 `/goals` → Goals, `/goals/:id` → GoalDetails (child of the AppShell layout route, so both render inside the sidebar shell).
 
+### Projects section (feature 08)
+
+**Projects page** — `src/pages/work/Projects.jsx`
+Same composition as Goals page: header row (`h1 text-xl font-semibold text-text-primary` "Projects" + `text-sm text-text-muted` subtitle + right `Button size="sm"` "New project" with `Plus size-4`), page-level `LoadingState` / `ErrorState` (retry = `refetch`) / `EmptyState` (FolderKanban icon) when zero projects; otherwise `grid grid-cols-1 gap-6 xl:grid-cols-2` of `ProjectCard`s. Owns `dialog` state + project mutations; success → `toast.success` ("Project created/updated/removed"). Form options come from `useGoals()` mapped to `{ id, title }` — the dialog itself owns no data.
+
+**ProjectCard** — `src/components/projects/ProjectCard.jsx`
+Section card `rounded-lg border border-border bg-surface p-5` (grid density). Title `truncate text-base font-semibold text-text-primary` + `line-clamp-2 text-sm text-text-muted` description. Meta chips `flex flex-wrap items-center gap-2`: linked-goal chip `max-w-40 truncate rounded-full bg-surface-tertiary px-2 py-0.5 text-xs font-medium text-text-secondary` (only when `goalTitle`), status badge via `projectStatus.js`. Progress row (only when tasks exist): `flex justify-between text-xs text-text-muted` "N of M tasks complete" + "N%", track `mt-1.5 h-1 rounded-full bg-border-light` fill `bg-accent` inline width; no tasks → `text-xs text-text-muted` "No tasks yet". Footer `flex items-center justify-between`: two-step-confirm edit/trash icons (`variant="ghost" size="icon-xs"`, icons `size-3.5`, aria-labels "Edit {name}" / "Remove {name}", confirm "Remove project? Its tasks will be kept." + Cancel/Remove `size="xs"`) + `<Button variant="outline" size="sm" asChild><Link to={"/projects/" + id}>View tasks</Link></Button>`.
+
+**ProjectFormDialog** — `src/components/projects/ProjectFormDialog.jsx`
+Same dialog conventions as `GoalFormDialog`. Title "New project" / "Edit project"; description "Create a project to group the tasks that move a goal forward." Fields: Name `Input` (placeholder "e.g. Personal website rebuild"); Description (optional) `Textarea rows={3}`; Goal (optional) `Select` — options list `goalOptions` prop plus a leading "No goal" item with sentinel value `NO_GOAL = "none"` (**Radix Select rejects empty-string values**; mapped to `null` on submit); Status `Select` fed by `projectStatusLabel` (default Active on add). zod: name trimmed required; description trimmed `max 500`; goalId string; status enum of `Object.values(PROJECT_STATUS)`. Footer submit "Create project" / "Save changes".
+
+**ProjectTasks** — `src/components/projects/ProjectTasks.jsx`
+Read-only "Tasks" section card until feature 09. Header `mb-4 flex items-center justify-between gap-4`: title + `text-xs text-text-muted` "{n} of {m} complete" (only when tasks exist). Rows `ul.divide-y divide-border-light`, row `flex items-center gap-4 py-3`: title `truncate text-sm font-medium text-text-primary` + meta `mt-0.5 text-xs text-text-muted` "{schedule} · {plannedMinutes} min planned", where schedule = `formatDate(scheduledDate) · formatTime(startTime) — formatTime(endTime)` or "Not scheduled"; trailing task status badge reusing `statusBadgeClass`/`statusLabel` from `taskStatus.js`. Empty: `EmptyState` (ListTodo) "No tasks in this project yet" — no action button (task management is feature 09). Task order: scheduled first by date, unscheduled last (SQL `ORDER BY scheduled_date IS NULL, scheduled_date, created_at DESC`).
+
+**Status helpers** — `src/components/projects/projectStatus.js`
+Mirrors `goalStatus.js` for `PROJECT_STATUS`. `projectStatusLabel` / `projectStatusBadgeClass` share base `rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap`; tones: active `bg-accent-light text-accent`, completed `bg-success-light text-success-foreground`, paused `bg-warning-light text-warning-foreground`, archived `bg-surface-secondary text-text-muted`. New project status UI must reuse these helpers.
+
+**ProjectDetails page** — `src/pages/work/ProjectDetails.jsx`
+Route `/projects/:id`. Back link `inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary` with `ChevronLeft size-4` "All projects". Header card (same section card): `h1 text-xl font-semibold` name, description, right cluster: linked-goal chip as a `<Link to={"/goals/" + goalId}>` styled `rounded-full bg-surface-tertiary px-2 py-0.5 text-xs font-medium text-text-secondary hover:text-text-primary` + status badge. Then `ProjectTasks`. Loading = combined `isLoading` of project + tasks; error = combined `ErrorState` (retry refetches both); missing project → `EmptyState` "Project not found" + "Back to projects" link.
+
+**Projects data layer** — `src/services/project.service.js` + `src/hooks/useProjects.js`
+`project.service.js` owns projects SQL (see progress-tracker 08 notes); `useProjects.js` exposes `useProjects`, `useProject(id)`, `useProjectTasks(projectId)` and one `useMutation` per operation (mutations invalidate `["projects"]` + `["project"]` prefix). Components never touch SQL directly.
+
+**Route registration** — `src/routes/index.jsx`
+`/projects` → Projects, `/projects/:id` → ProjectDetails.
+
 ### shadcn/ui primitives (generated, JS mode)
 
 Live in `src/components/ui/` (button, input, textarea, badge, card, label, select, dialog, table, tabs, dropdown-menu, form). Generated by `npx shadcn@latest add` — do not hand-edit. `cn()` imports rewritten to `@/lib/utils`. shadcn v4 emits `import { Slot } from "radix-ui"` (unified radix package) — keep the `radix-ui` and `cn` npm dependencies for future CLI adds.
