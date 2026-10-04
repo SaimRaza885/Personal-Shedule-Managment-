@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 5 — Learning
-**Last completed:** 16 What I Learned
-**Next:** 17 Tech Concepts I Must Know
+**Last completed:** 17 Tech Concepts I Must Know
+**Next:** 18 Watch Later
 
 ---
 
@@ -47,7 +47,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 5 — Learning
 
 * [x] 16 What I Learned
-* [ ] 17 Tech Concepts I Must Know
+* [x] 17 Tech Concepts I Must Know
 * [ ] 18 Watch Later
 
 ### Phase 6 — Reflection
@@ -148,3 +148,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **15 — Ideas UI:** `/ideas` = header + "New idea" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `IdeaCard`s (title, description, status badge via `ideaStatus.js`, "Added {formatTimestamp}", edit/trash with inline confirm). `IdeaFormDialog` (RHF+zod: title trimmed required, description ≤500, status select) serves both add and edit with primitive-dep reset. `CaptureList` now renders **two** convert buttons per unconverted row ("Convert to task" + "Convert to idea"), both disabled while any conversion or delete is pending; `QuickCapture` tracks `convertingKind` so only the clicked button shows its spinner. The sidebar's existing "Ideas" (Lightbulb) entry is now live — `/ideas` swapped from Placeholder to the real page.
 * **16 — Learning data layer:** `services/learning.service.js` owns the `learning_entries` SQL (list/create/update/delete); `hooks/useLearning.js` owns key `["learning"]` + one mutation per operation. The entry date is **required** — it defaults to today in the dialog and is validated with `.min(1)` plus a `yyyy-MM-dd` regex refine (two distinct zod messages). `title` trimmed required, `content` optional ≤2000 chars. `listLearningEntries()` orders SQL-side by `date DESC, created_at DESC` (date is the meaningful anchor; no enum rank exists so no JS sort). Update/delete use the standard `rowsAffected === 0` guard. Notes are deliberately self-directed — nothing quizzes, schedules, or resurfaces them (the decision line in Decisions Made).
 * **16 — Learning UI:** `/learning` = header ("What I Learned") + "New note" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `LearningCard`s (truncated title + `formatDate` date chip, pre-wrap content, edit/trash with the inline confirm pattern). `LearningFormDialog` (RHF+zod: title, date `Input type="date"` labeled "Learned on", content Textarea rows 5; `sm:max-w-[480px]`) serves add and edit with the primitive-dep reset; edit prefill passes flattened `{ title, date, content }`. Verified: date-DESC ordering across two notes, zod guard on empty submit, edit re-sorting the list when its date changed, delete leaving the DB with exactly the expected row.
+* **17 — Concepts data layer:** `services/concept.service.js` owns the `tech_concepts` SQL (list/create/update/delete); `hooks/useConcepts.js` owns key `["concepts"]` + one mutation per operation. The table's status has a CHECK (`not_started`/`learning`/`learned`/`review`) and `CONCEPT_STATUS` already existed in `constants.js`. `listConcepts()` sorts in JS by `STATUS_ORDER` rank — active learning first, then review, then not-started backlog, mastered last (`learning → review → not_started → learned`) — then `created_at DESC`, so the newest stays on top within each status. Update/delete use the standard `rowsAffected === 0` guard. Concepts are tracked separately from learning notes (the decision line): a note is what you figured out, a concept is what you want to know.
+* **17 — Concepts UI:** `/concepts` = header ("Tech Concepts") + "New concept" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `ConceptCard`s (title + status badge top row, `line-clamp-2` description, category chip + "Added {formatTimestamp}" meta row — chip omitted when category empty). `ConceptFormDialog` (RHF+zod: title required, category ≤60, description ≤500, status Select; `sm:max-w-[440px]`) serves add and edit with the primitive-dep reset; `conceptStatus.js` maps the four statuses to the token families (neutral/secondary, accent, success, warning). Verified: Learning ranks above Not started, edit changing status re-sorts live, category chip omission, zod guard, delete leaving exactly the expected row.
