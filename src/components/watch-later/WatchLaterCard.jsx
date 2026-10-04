@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Check, Pencil, Trash2, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { openExternal } from "@/lib/opener";
 import { formatDate, formatTimestamp } from "@/lib/datetime";
 import { WATCH_STATUS } from "@/lib/constants";
 import { watchStatusBadgeClass, watchStatusLabel } from "./watchStatus";
@@ -31,6 +33,15 @@ export function WatchLaterCard({ item, onToggleStatus, onEdit, onRemove }) {
           target="_blank"
           rel="noreferrer"
           className="block truncate text-sm text-accent hover:underline"
+          onClick={(event) => {
+            // Route through the opener plugin so the link opens in the real
+            // default browser in the desktop app, not inside the webview.
+            event.preventDefault();
+            openExternal(item.url).catch((error) => {
+              console.error("[WatchLaterCard:openExternal]", error);
+              toast.error("Could not open the link. Please check the URL.");
+            });
+          }}
         >
           {item.url}
         </a>

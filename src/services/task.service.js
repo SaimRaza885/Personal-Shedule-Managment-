@@ -71,12 +71,15 @@ export async function listTasks(filters = {}) {
 }
 
 /**
+ * Validate a task and build its INSERT as a standalone statement so services
+ * that need to create a task inside a larger transaction (e.g. quick capture
+ * conversion) can compose it without duplicating the SQL.
  * @param {{ title: string, description?: string, projectId?: string|null,
  *   goalId?: string|null, priority: string, status: string,
  *   plannedMinutes: number, energyLevel?: string|null }} input
- * @returns {Promise<string>} id of the created task
+ * @returns {{ id: string, sql: string, params: unknown[] }}
  */
-export async function createTask({
+export function buildCreateTaskStatement({
   title,
   description = "",
   projectId = null,
@@ -95,31 +98,44 @@ export async function createTask({
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  try {
-    await execute(
-      `INSERT INTO tasks
+  return {
+    id,
+    sql: `INSERT INTO tasks
          (id, project_id, goal_id, title, description, planned_minutes,
           priority, status, energy_level, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        projectId,
-        goalId,
-        trimmedTitle,
-        description.trim(),
-        plannedMinutes,
-        priority,
-        status,
-        energyLevel,
-        now,
-        now,
-      ],
-    );
+    params: [
+      id,
+      projectId,
+      goalId,
+      trimmedTitle,
+      description.trim(),
+      plannedMinutes,
+      priority,
+      status,
+      energyLevel,
+      now,
+      now,
+    ],
+  };
+}
+
+/**
+ * @param {{ title: string, description?: string, projectId?: string|null,
+ *   goalId?: string|null, priority: string, status: string,
+ *   plannedMinutes: number, energyLevel?: string|null }} input
+ * @returns {Promise<string>} id of the created task
+ */
+export async function createTask(input) {
+  const statement = buildCreateTaskStatement(input);
+
+  try {
+    await execute(statement.sql, statement.params);
   } catch (error) {
     console.error("[task.service:createTask]", error);
     throw new Error("Could not create the task. Please try again.");
   }
-  return id;
+  return statement.id;
 }
 
 /**

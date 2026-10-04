@@ -8,6 +8,8 @@
     "sql:default",
     "notification:default",
     "fs:default",
-    "dialog:default"
+    "dialog:default",
+    "opener:default",
+    "opener:allow-open-url"
   ]
 }

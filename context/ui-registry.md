@@ -312,7 +312,7 @@ Header `h1 text-xl font-semibold text-text-primary` "Tech Concepts" + `text-sm t
 ### Watch Later section (feature 18)
 
 **WatchLaterCard** — `src/components/watch-later/WatchLaterCard.jsx`
-`section.flex flex-col gap-3 rounded-lg border border-border bg-surface p-5`. Top row: title `h3 min-w-0 truncate text-base font-semibold text-text-primary` + status badge (via `watchStatus`). URL line (only when non-empty): `a.block truncate text-sm text-accent hover:underline` with `target="_blank" rel="noreferrer"`. Meta row `flex flex-wrap items-center gap-2`: "Scheduled {formatDate(scheduledDate)}" chip `rounded-full bg-surface-secondary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-text-secondary` (only when dated) + `text-xs text-text-muted` "Added {formatTimestamp(createdAt)}". Footer `mt-auto pt-1`: inline confirm (`confirming` state) "Remove this item?" + Cancel `size="xs"` + destructive `size="xs"` Remove; otherwise the watched toggle — `Check` when pending / `Undo2` when watched (`Button variant="ghost" size="icon-xs"`, `size-3.5`, aria-labels "Mark {title} as watched" / "Mark {title} as unwatched") — plus edit + trash icon buttons (aria-labels "Edit {title}" / "Remove {title}").
+`section.flex flex-col gap-3 rounded-lg border border-border bg-surface p-5`. Top row: title `h3 min-w-0 truncate text-base font-semibold text-text-primary` + status badge (via `watchStatus`). URL line (only when non-empty): `a.block truncate text-sm text-accent hover:underline` with `target="_blank" rel="noreferrer"`; feature 27: onClick calls `preventDefault()` then `openExternal(item.url)` from `lib/opener.js` (desktop shell opens the system browser instead of navigating the webview; failure → `toast.error` "Could not open the link. Please check the URL."). Meta row `flex flex-wrap items-center gap-2`: "Scheduled {formatDate(scheduledDate)}" chip `rounded-full bg-surface-secondary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-text-secondary` (only when dated) + `text-xs text-text-muted` "Added {formatTimestamp(createdAt)}". Footer `mt-auto pt-1`: inline confirm (`confirming` state) "Remove this item?" + Cancel `size="xs"` + destructive `size="xs"` Remove; otherwise the watched toggle — `Check` when pending / `Undo2` when watched (`Button variant="ghost" size="icon-xs"`, `size-3.5`, aria-labels "Mark {title} as watched" / "Mark {title} as unwatched") — plus edit + trash icon buttons (aria-labels "Edit {title}" / "Remove {title}").
 
 **WatchLaterFormDialog** — `src/components/watch-later/WatchLaterFormDialog.jsx`
 RHF+zod (`watchItemSchema`: title trimmed required "Item title is required"; url optional refined `value === "" || URL.canParse(value)` → "Enter a valid link (e.g. https://…)"; scheduledDate optional empty-or-`DATE_REGEX` → "Enter a valid date"; status `z.enum(Object.values(WATCH_STATUS))`). Serves add + edit (`mode` prop `{ kind: "add" } | { kind: "edit", title, url, scheduledDate, status }` flattened from the page; `scheduledDate` normalized `"" ↔ null` at the onSubmit/`|| null` boundary). Dialog titles "New link" / "Edit link"; descriptions "Save something worth watching — schedule it for later if you like." / "Update this link's details." Fields: title Input (placeholder "e.g. Rust ownership explained visually"), url Input labeled "Link (optional)" (placeholder "https://…"), scheduledDate `Input type="date"` labeled "Schedule for (optional)", status Select (full width, options from `WATCH_STATUS` via `watchStatusLabel`). `DialogContent` `sm:max-w-[440px]`. Reset effect keyed on primitive deps (`[open, modeTitle, modeUrl, modeScheduledDate, modeStatus, form]`). Footer Cancel + "Add link" / "Save changes" with `Loader2` "Saving…".
@@ -427,6 +427,17 @@ Framework-free helper module (not a component): `saveJsonFile({fileName, content
 
 **Route (update)** — `src/routes/index.jsx`
 `/settings` swapped from Placeholder to `Settings` — the last Placeholder route; `src/pages/Placeholder.jsx` was deleted.
+
+### Hardening section (feature 27)
+
+**NotFound page** — `src/pages/not-found/NotFound.jsx`
+Catch-all route. Wrapper `flex min-h-[60vh] items-center justify-center` around the standard `EmptyState` (Compass icon) — title "Page not found", description "That page doesn't exist or was moved. Head back to Today to keep going.", action `<Button asChild><Link to="/">Back to Today</Link></Button>` (default variant).
+
+**Route (update)** — `src/routes/index.jsx`
+`{ path: "*", element: <NotFound /> }` added as the final child of the AppShell layout route, so unknown URLs render inside the shell (sidebar still usable). Verified live: `/nope` renders the page.
+
+**External link opener** — `src/lib/opener.js`
+Framework-free helper module (not a component): `openExternal(url)` returns a Promise. Tauri path uses `@tauri-apps/plugin-opener`'s `openUrl`; browser path uses `window.open` resolved synchronously off the click (keeps popup blockers quiet) and rejects with "Could not open the link." when blocked. Rust side: `tauri-plugin-opener = "2"` in Cargo.toml, `init()` registered, capabilities `opener:default` + `opener:allow-open-url`. `tauri-plugin-single-instance = "2"` was also added so a second launch focuses the existing window instead of opening a duplicate. Consumer: `WatchLaterCard` (above).
 
 ### shadcn/ui primitives (generated, JS mode)
 

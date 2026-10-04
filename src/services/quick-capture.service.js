@@ -1,12 +1,12 @@
-import { execute, query, queryOne } from "@/lib/database";
+import { execute, executeTransaction, query, queryOne } from "@/lib/database";
 import {
   CONVERTED_TYPE,
   DEFAULT_VALUES,
   TASK_PRIORITY,
   TASK_STATUS,
 } from "@/lib/constants";
-import { createIdea } from "@/services/idea.service";
-import { createTask } from "@/services/task.service";
+import { buildCreateIdeaStatement } from "@/services/idea.service";
+import { buildCreateTaskStatement } from "@/services/task.service";
 
 /**
  * Read + write operations for quick captures. A capture is a fast,
@@ -102,22 +102,20 @@ export async function convertCaptureToTask({ id }) {
     : content;
 
   try {
-    await execute("BEGIN");
-    const taskId = await createTask({
+    const taskStatement = buildCreateTaskStatement({
       title,
       description: truncated ? content : "",
       priority: TASK_PRIORITY.MEDIUM,
       status: TASK_STATUS.NOT_STARTED,
       plannedMinutes: DEFAULT_VALUES.PLANNED_MINUTES,
     });
-    await execute(
-      "UPDATE quick_captures SET converted_type = ?, converted_id = ? WHERE id = ?",
-      [CONVERTED_TYPE.TASK, taskId, id],
+    await executeTransaction(
+      `${taskStatement.sql};
+       UPDATE quick_captures SET converted_type = ?, converted_id = ? WHERE id = ?`,
+      [...taskStatement.params, CONVERTED_TYPE.TASK, taskStatement.id, id],
     );
-    await execute("COMMIT");
-    return taskId;
+    return taskStatement.id;
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     console.error("[quick-capture.service:convertCaptureToTask]", error);
     throw new Error(
       "Could not convert the capture into a task. Please try again.",
@@ -146,19 +144,17 @@ export async function convertCaptureToIdea({ id }) {
     : content;
 
   try {
-    await execute("BEGIN");
-    const ideaId = await createIdea({
+    const ideaStatement = buildCreateIdeaStatement({
       title,
       description: truncated ? content : "",
     });
-    await execute(
-      "UPDATE quick_captures SET converted_type = ?, converted_id = ? WHERE id = ?",
-      [CONVERTED_TYPE.IDEA, ideaId, id],
+    await executeTransaction(
+      `${ideaStatement.sql};
+       UPDATE quick_captures SET converted_type = ?, converted_id = ? WHERE id = ?`,
+      [...ideaStatement.params, CONVERTED_TYPE.IDEA, ideaStatement.id, id],
     );
-    await execute("COMMIT");
-    return ideaId;
+    return ideaStatement.id;
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     console.error("[quick-capture.service:convertCaptureToIdea]", error);
     throw new Error(
       "Could not convert the capture into an idea. Please try again.",

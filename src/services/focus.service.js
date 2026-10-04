@@ -1,4 +1,4 @@
-import { execute, query, queryOne } from "@/lib/database";
+import { execute, executeTransaction, query, queryOne } from "@/lib/database";
 import { FOCUS_STATUS, TASK_STATUS } from "@/lib/constants";
 import { setTaskStatus } from "@/services/task.service";
 import { getTodaySchedule } from "@/services/today.service";
@@ -227,18 +227,19 @@ async function finishSession(id, status) {
       : session.actualMinutes;
 
   try {
-    await execute(
+    const statements = [
       `UPDATE focus_sessions
        SET status = ?, actual_minutes = ?, ended_at = ?
        WHERE id = ?`,
-      [status, actualMinutes, endedAt, id],
-    );
+    ];
+    const params = [status, actualMinutes, endedAt, id];
     if (session.taskId) {
-      await execute(
+      statements.push(
         "UPDATE tasks SET actual_minutes = actual_minutes + ?, updated_at = ? WHERE id = ?",
-        [actualMinutes, endedAt, session.taskId],
       );
+      params.push(actualMinutes, endedAt, session.taskId);
     }
+    await executeTransaction(statements.join(";\n"), params);
   } catch (error) {
     console.error("[focus.service:finishSession]", error);
     throw new Error(

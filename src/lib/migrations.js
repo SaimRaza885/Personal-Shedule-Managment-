@@ -270,6 +270,9 @@ export const MIGRATIONS = [
 /**
  * Apply any unapplied migrations. Safe to call on every startup —
  * applied migrations are recorded in `_migrations` and skipped.
+ * Each migration ships as ONE execute call (BEGIN; ...; COMMIT;) so a
+ * failure halfway can never leave a schema half-migrated: the engine
+ * pool executes the batch on a single connection.
  * @param {{ execute: (sql: string, params?: unknown[]) => Promise<unknown> }} db
  */
 export async function runMigrations(db) {
@@ -287,12 +290,14 @@ export async function runMigrations(db) {
 
   for (const migration of MIGRATIONS) {
     if (applied.has(migration.id)) continue;
-    for (const statement of migration.statements) {
-      await db.execute(statement);
-    }
-    await db.execute("INSERT INTO _migrations (id, name) VALUES (?, ?)", [
-      migration.id,
-      migration.name,
-    ]);
+    const statements = migration.statements
+      .map((statement) => statement.trim().replace(/;+\s*$/, ""))
+      .join(";\n");
+    // Raw db.execute (not executeTransaction) — this runs during getDb()
+    // initialization, before the public helpers exist, and avoids recursion.
+    await db.execute(
+      `BEGIN;\n${statements};\nINSERT INTO _migrations (id, name) VALUES (?, ?);\nCOMMIT;`,
+      [migration.id, migration.name]
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { execute, query } from "@/lib/database";
+import { execute, executeTransaction, query } from "@/lib/database";
 import { DEFAULT_VALUES, TASK_STATUS } from "@/lib/constants";
 
 /**
@@ -41,8 +41,6 @@ export async function listTopThreeCandidates(date) {
  */
 export async function addTopThreeTask({ date, taskId }) {
   try {
-    await execute("BEGIN");
-
     const scheduled = await query(
       `SELECT COUNT(*) AS count
        FROM daily_schedules ds
@@ -88,10 +86,8 @@ export async function addTopThreeTask({ date, taskId }) {
       [id, date, taskId, date, new Date().toISOString()],
     );
 
-    await execute("COMMIT");
     return id;
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     if (error instanceof Error && error.message.startsWith("That ")) {
       throw error;
     }
@@ -110,8 +106,6 @@ export async function addTopThreeTask({ date, taskId }) {
  */
 export async function removeTopThreeTask({ date, id }) {
   try {
-    await execute("BEGIN");
-
     const rows = await query(
       `SELECT id, task_id AS taskId, created_at AS createdAt
        FROM daily_top_three WHERE date = ? ORDER BY position`,
@@ -122,11 +116,9 @@ export async function removeTopThreeTask({ date, id }) {
       throw new Error(`Top 3 entry ${id} not found`);
     }
 
-    await rewritePositions(date, remaining);
-
-    await execute("COMMIT");
+    const { sql, params } = buildRewritePositions(date, remaining);
+    await executeTransaction(sql, params);
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     if (error instanceof Error && error.message.includes("not found")) {
       throw new Error("That Top 3 task was already removed.");
     }
@@ -144,8 +136,6 @@ export async function removeTopThreeTask({ date, id }) {
  */
 export async function moveTopThreeTask({ date, id, direction }) {
   try {
-    await execute("BEGIN");
-
     const rows = await query(
       `SELECT id, task_id AS taskId, created_at AS createdAt
        FROM daily_top_three WHERE date = ? ORDER BY position`,
@@ -158,7 +148,6 @@ export async function moveTopThreeTask({ date, id, direction }) {
 
     const target = direction === "up" ? index - 1 : index + 1;
     if (target < 0 || target >= rows.length) {
-      await execute("COMMIT");
       return;
     }
 
@@ -167,11 +156,9 @@ export async function moveTopThreeTask({ date, id, direction }) {
       reordered[target],
       reordered[index],
     ];
-    await rewritePositions(date, reordered);
-
-    await execute("COMMIT");
+    const { sql, params } = buildRewritePositions(date, reordered);
+    await executeTransaction(sql, params);
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     if (error instanceof Error && error.message.includes("not found")) {
       throw new Error("That Top 3 task was already removed.");
     }
@@ -181,22 +168,29 @@ export async function moveTopThreeTask({ date, id, direction }) {
 }
 
 /**
+ * Build a single transactional batch that rewrites every position for the
+ * day in order, giving ranks 1..n with no gaps.
  * @param {string} date
  * @param {Array<{ id: string, taskId: string, createdAt: string }>} orderedEntries
+ * @returns {{ sql: string, params: unknown[] }}
  */
-async function rewritePositions(date, orderedEntries) {
-  await execute("DELETE FROM daily_top_three WHERE date = ?", [date]);
+function buildRewritePositions(date, orderedEntries) {
+  const statements = ["DELETE FROM daily_top_three WHERE date = ?"];
+  const params = [date];
+
   for (let i = 0; i < orderedEntries.length; i += 1) {
-    await execute(
+    statements.push(
       `INSERT INTO daily_top_three (id, date, task_id, position, created_at)
        VALUES (?, ?, ?, ?, ?)`,
-      [
-        orderedEntries[i].id,
-        date,
-        orderedEntries[i].taskId,
-        i + 1,
-        orderedEntries[i].createdAt,
-      ],
+    );
+    params.push(
+      orderedEntries[i].id,
+      date,
+      orderedEntries[i].taskId,
+      i + 1,
+      orderedEntries[i].createdAt,
     );
   }
+
+  return { sql: statements.join(";\n"), params };
 }

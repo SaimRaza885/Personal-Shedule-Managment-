@@ -1,4 +1,4 @@
-import { execute } from "@/lib/database";
+import { execute, executeTransaction, queryOne } from "@/lib/database";
 import { ENERGY_LEVEL, TASK_PRIORITY, TASK_STATUS } from "@/lib/constants";
 
 /**
@@ -60,9 +60,11 @@ export async function addScheduleBlock({
   const now = new Date().toISOString();
 
   try {
-    await execute("BEGIN");
-    await execute(
+    await executeTransaction(
       `INSERT INTO tasks (id, title, priority, energy_level, status, planned_minutes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+       INSERT INTO daily_schedules
+         (id, task_id, date, start_time, end_time, planned_minutes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         taskId,
@@ -73,17 +75,17 @@ export async function addScheduleBlock({
         plannedMinutes,
         now,
         now,
+        scheduleId,
+        taskId,
+        date,
+        startTime,
+        endTime,
+        plannedMinutes,
+        now,
+        now,
       ],
     );
-    await execute(
-      `INSERT INTO daily_schedules
-         (id, task_id, date, start_time, end_time, planned_minutes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [scheduleId, taskId, date, startTime, endTime, plannedMinutes, now, now],
-    );
-    await execute("COMMIT");
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     console.error("[schedule.service:addScheduleBlock]", error);
     throw new Error("Could not add the task to your schedule. Please try again.");
   }
@@ -102,25 +104,23 @@ export async function updateScheduleBlock({ id, startTime, endTime }) {
   const now = new Date().toISOString();
 
   try {
-    await execute("BEGIN");
-    const result = await execute(
-      `UPDATE daily_schedules
-       SET start_time = ?, end_time = ?, planned_minutes = ?, updated_at = ?
-       WHERE id = ?`,
-      [startTime, endTime, plannedMinutes, now, id],
+    const existing = await queryOne(
+      "SELECT id FROM daily_schedules WHERE id = ?",
+      [id],
     );
-    if (result.rowsAffected === 0) {
+    if (!existing) {
       throw new Error(`Schedule block ${id} not found`);
     }
-    await execute(
-      `UPDATE tasks
+    await executeTransaction(
+      `UPDATE daily_schedules
+       SET start_time = ?, end_time = ?, planned_minutes = ?, updated_at = ?
+       WHERE id = ?;
+       UPDATE tasks
        SET planned_minutes = ?, updated_at = ?
        WHERE id = (SELECT task_id FROM daily_schedules WHERE id = ?)`,
-      [plannedMinutes, now, id],
+      [startTime, endTime, plannedMinutes, now, id, plannedMinutes, now, id],
     );
-    await execute("COMMIT");
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     console.error("[schedule.service:updateScheduleBlock]", error);
     throw new Error("Could not update the schedule. Please try again.");
   }

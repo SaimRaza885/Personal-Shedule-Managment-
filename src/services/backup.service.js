@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { execute, query } from "@/lib/database";
+import { execute, executeTransaction, query } from "@/lib/database";
 
 /**
  * Local backup: export every app table into one JSON snapshot, and restore
@@ -249,17 +249,24 @@ export function parseSnapshot(content) {
  * @returns {Promise<void>}
  */
 export async function restoreSnapshot(tables) {
+  const statements = DELETE_ORDER.map((table) => `DELETE FROM ${table}`);
+  const params = [];
+
+  for (const table of INSERT_ORDER) {
+    // Table and column names come from TABLE_COLUMNS, never from the file;
+    // only row values are user data and those are bound as parameters.
+    const columns = TABLE_COLUMNS[table];
+    const placeholders = columns.map(() => "?").join(", ");
+    const insertSql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`;
+    for (const row of tables[table]) {
+      statements.push(insertSql);
+      params.push(...columns.map((column) => row[column] ?? null));
+    }
+  }
+
   try {
-    await execute("BEGIN");
-    for (const table of DELETE_ORDER) {
-      await execute(`DELETE FROM ${table}`);
-    }
-    for (const table of INSERT_ORDER) {
-      await insertRows(table, tables[table]);
-    }
-    await execute("COMMIT");
+    await executeTransaction(statements.join(";\n"), params);
   } catch (error) {
-    await execute("ROLLBACK").catch(() => {});
     console.error("[backup.service:restoreSnapshot]", error);
     throw new Error(
       "Could not restore that backup. Your current data was left unchanged.",
@@ -301,20 +308,5 @@ export async function listRecentBackups(limit = 5) {
   } catch (error) {
     console.error("[backup.service:listRecentBackups]", error);
     throw new Error("Could not load your backup history. Please try again.");
-  }
-}
-
-/**
- * @param {string} table
- * @param {Record<string, unknown>[]} rows
- */
-async function insertRows(table, rows) {
-  if (rows.length === 0) return;
-  const columns = TABLE_COLUMNS[table];
-  const placeholders = columns.map(() => "?").join(", ");
-  const sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`;
-  for (const row of rows) {
-    const values = columns.map((column) => row[column] ?? null);
-    await execute(sql, values);
   }
 }

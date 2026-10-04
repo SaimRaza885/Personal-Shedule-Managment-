@@ -56,27 +56,41 @@ export async function listIdeas() {
 }
 
 /**
+ * Validate an idea and build its INSERT as a standalone statement so services
+ * that need to create an idea inside a larger transaction (e.g. quick capture
+ * conversion) can compose it without duplicating the SQL.
  * @param {{ title: string, description?: string }} input
- * @returns {Promise<string>} id of the created idea
+ * @returns {{ id: string, sql: string, params: unknown[] }}
  */
-export async function createIdea({ title, description = "" }) {
+export function buildCreateIdeaStatement({ title, description = "" }) {
   const trimmed = title.trim();
   if (!trimmed) throw new Error("Give the idea a title");
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  try {
-    await execute(
-      `INSERT INTO ideas (id, title, description, status, created_at, updated_at)
+  return {
+    id,
+    sql: `INSERT INTO ideas (id, title, description, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, trimmed, description.trim(), IDEA_STATUS.NEW, now, now],
-    );
+    params: [id, trimmed, description.trim(), IDEA_STATUS.NEW, now, now],
+  };
+}
+
+/**
+ * @param {{ title: string, description?: string }} input
+ * @returns {Promise<string>} id of the created idea
+ */
+export async function createIdea(input) {
+  const statement = buildCreateIdeaStatement(input);
+
+  try {
+    await execute(statement.sql, statement.params);
   } catch (error) {
     console.error("[idea.service:createIdea]", error);
     throw new Error("Could not save the idea. Please try again.");
   }
-  return id;
+  return statement.id;
 }
 
 /**

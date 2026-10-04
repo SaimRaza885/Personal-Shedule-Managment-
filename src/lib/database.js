@@ -66,3 +66,26 @@ export async function queryOne(sql, params = []) {
   const rows = await query(sql, params);
   return rows[0];
 }
+
+/**
+ * Run several related write statements atomically as one transaction.
+ * The whole batch travels to the engine as a single call because
+ * tauri-plugin-sql executes statements on a connection pool: BEGIN/COMMIT
+ * sent as separate calls can land on different connections. One combined
+ * call keeps the batch on one connection and all-or-nothing in both engines.
+ * @param {string} sql statements separated by ";"
+ * @param {unknown[]} [params] flat params for every statement, in order
+ * @returns {Promise<{ rowsAffected: number }>}
+ */
+export async function executeTransaction(sql, params = []) {
+  const db = await getDb();
+  const body = sql.trim().replace(/;+\s*$/, "");
+  try {
+    return await db.execute(`BEGIN;\n${body};\nCOMMIT;`, params);
+  } catch (error) {
+    // Best-effort heal: if a statement failed mid-batch the connection may
+    // still hold an open transaction; roll it back so pooled reuse is clean.
+    await db.execute("ROLLBACK").catch(() => {});
+    throw error;
+  }
+}

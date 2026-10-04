@@ -17,6 +17,7 @@ import { Diary } from "@/pages/diary/Diary";
 import { Finance } from "@/pages/finance/Finance";
 import { Analytics } from "@/pages/analytics/Analytics";
 import { Settings } from "@/pages/settings/Settings";
+import { NotFound } from "@/pages/not-found/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: "/reviews", element: <Reviews /> },
       { path: "/analytics", element: <Analytics /> },
       { path: "/settings", element: <Settings /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
