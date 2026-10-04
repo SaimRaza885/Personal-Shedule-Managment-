@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 3 — Focus & Execution
-**Last completed:** 12 Low-Energy Mode
-**Next:** 13 Overload Protection
+**Phase:** Phase 4 — Capture & Ideas
+**Last completed:** 13 Overload Protection
+**Next:** 14 Quick Capture
 
 ---
 
@@ -37,7 +37,7 @@ Update this file after every completed feature. Any AI agent reading this should
 * [x] 10 Focus Sessions
 * [x] 11 Distraction Log
 * [x] 12 Low-Energy Mode
-* [ ] 13 Overload Protection
+* [x] 13 Overload Protection
 
 ### Phase 4 — Capture & Ideas
 
@@ -137,3 +137,6 @@ Update this file after every completed feature. Any AI agent reading this should
 * **12 — Energy selection state:** `src/stores/energy.store.js` is the project's first Zustand store — the selection is UI state (library-docs.md lists "Low-Energy Mode selection" as a store use case), persisted to `localStorage` key `psm-energy-mode` via the persist middleware with `partialize` to `{ energy }` only. `EnergySelector` chips (High/Medium/Low) live in the NowCard header; clicking the selected chip deselects (`null` = no mode). Only **Low** triggers behavior — High/Medium are record-keeping states. `useTodayData()` reads the store and derives `lighterOptions` so the store itself stays free of business logic.
 * **12 — Lighter options ranking (read-only):** `findLighterOptions(schedule, timeNow, { excludeTaskId, limit })` in `today.service.js` ranks actionable blocks that still have time left (`endTime > timeNow`) by energy level (low → medium → unknown → high, `ENERGY_RANK`), then shorter `plannedMinutes`, then earlier `startTime`; capped at `DEFAULT_VALUES.LIGHTER_OPTIONS_MAX` (3). `getTodaySchedule` now also selects `t.priority` / `t.energy_level`. The invariant holds — the mode only changes what is **surfaced**: verified the schedule rows are byte-identical before/after toggling modes, and each suggestion's Start reuses Today's existing `handleStart` (starts a real focus session for that task — verified it navigated to /focus with "Fix small issue" and its 25 min). Reload persistence verified; console clean.
 * **12 — Verification seeding note:** the UI cannot yet create a scheduled task with an energy level (ScheduleBlockDialog creates tasks by title only; energy editing lives in TaskFormDialog) — linking these is feature 26. Feature-12 verification therefore seeded a mixed-energy day via service probes (`addScheduleBlock` + full `updateTask`), then confirmed the expected order (Fix small issue, Review PR, Read documentation) and that lower-ranked Groceries was dropped by the limit while the current block was excluded.
+* **13 — Settings data layer:** `services/settings.service.js` is the first consumer of the `settings` key/value table (`getAvailableMinutes` / `setAvailableMinutes`), with `SETTING_KEYS` in `constants.js` (single source for key names, no inline literals). Reads are defensive: missing/invalid/non-positive → `DEFAULT_VALUES.AVAILABLE_MINUTES` (480). `hooks/useSettings.js` owns key `["settings","available-minutes"]`. All services are `async` even for synchronous-feeling reads, keeping the data-layer contract uniform.
+* **13 — Overload computation (read-only by design):** `summarizeOverload(schedule, availableMinutes)` in `today.service.js` sums `plannedMinutes` of blocks that are not completed/cancelled and flags `overloaded` when the remainder **strictly** exceeds available time (480 vs 480 shows nothing — the day fits exactly). `useTodayData()` composes query + computation and returns `overload`. The banner never mutates the plan — verified byte-identical schedule JSON before/after all banner interactions; copy explicitly says "nothing changes unless you change it".
+* **13 — Overload banner + AvailableTimeDialog:** `OverloadBanner` (role="alert", warning token family `border-warning-light`/`bg-warning-lightest`/`text-warning-foreground`, `CircleAlert` icon) sits between the Top 3 / Progress grid and the Schedule card on Today; its "Available time" button opens `AvailableTimeDialog` (same RHF+zod conventions as `ScheduleBlockDialog`). Hours input validated in two layers: native `min=0.25 max=24 step=0.25` + zod (required message on empty, range message on out-of-range). Verified: 480/480 no banner → 300 min banner "Planned work: 8h · Available time: 5h" → dialog save 5h→10h toast + banner clears → completing a 150-min block drops remaining to 5h 30m (completed work is excluded).

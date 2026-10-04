@@ -78,6 +78,29 @@ export function summarizeProgress(schedule) {
   };
 }
 
+/**
+ * The remaining plan weighed against the time the user actually has.
+ * Overload Protection only warns — it never deletes or rewrites the plan;
+ * moving, shortening, or removing blocks stays the user's call.
+ * @param {ScheduleItem[]} schedule
+ * @param {number} availableMinutes
+ * @returns {{ remainingMinutes: number, availableMinutes: number, overloaded: boolean }}
+ */
+export function summarizeOverload(schedule, availableMinutes) {
+  const remainingMinutes = schedule
+    .filter(
+      (item) =>
+        item.status !== TASK_STATUS.COMPLETED &&
+        item.status !== TASK_STATUS.CANCELLED,
+    )
+    .reduce((sum, item) => sum + (item.plannedMinutes ?? 0), 0);
+  return {
+    remainingMinutes,
+    availableMinutes,
+    overloaded: remainingMinutes > availableMinutes,
+  };
+}
+
 const UNKNOWN_ENERGY_RANK = 2;
 const ENERGY_RANK = {
   [ENERGY_LEVEL.LOW]: 0,

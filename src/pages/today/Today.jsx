@@ -6,6 +6,8 @@ import { TopThreeCard } from "@/components/today/TopThreeCard";
 import { TopThreePickerDialog } from "@/components/today/TopThreePickerDialog";
 import { DailyProgressCard } from "@/components/today/DailyProgressCard";
 import { ScheduleCard } from "@/components/today/ScheduleCard";
+import { OverloadBanner } from "@/components/today/OverloadBanner";
+import { AvailableTimeDialog } from "@/components/today/AvailableTimeDialog";
 import { ScheduleBlockDialog } from "@/components/schedule/ScheduleBlockDialog";
 import { Button } from "@/components/ui/button";
 import { useTodayData } from "@/hooks/useToday";
@@ -21,6 +23,7 @@ import {
   useRemoveTopThree,
   useTopThreeCandidates,
 } from "@/hooks/useTopThree";
+import { useSetAvailableTime } from "@/hooks/useSettings";
 import { DEFAULT_VALUES } from "@/lib/constants";
 import { useEnergyStore } from "@/stores/energy.store";
 
@@ -38,6 +41,7 @@ export function Today() {
     current,
     upcoming,
     progress,
+    overload,
     energy,
     lighterOptions,
     isLoading,
@@ -48,11 +52,13 @@ export function Today() {
   const setEnergy = useEnergyStore((state) => state.setEnergy);
   const [dialog, setDialog] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [availableTimeOpen, setAvailableTimeOpen] = useState(false);
   const activeFocusQuery = useActiveFocusSession();
   const startFocus = useStartFocusSession();
   const addBlock = useAddScheduleBlock();
   const updateBlock = useUpdateScheduleBlock();
   const removeBlock = useRemoveScheduleBlock();
+  const setAvailableTime = useSetAvailableTime();
   const candidatesQuery = useTopThreeCandidates(date);
   const addTopThree = useAddTopThree();
   const removeTopThree = useRemoveTopThree();
@@ -134,6 +140,16 @@ export function Today() {
     }
   };
 
+  const handleSaveAvailableTime = async (values) => {
+    try {
+      await setAvailableTime.mutateAsync(values.minutes);
+      toast.success("Available time updated");
+      setAvailableTimeOpen(false);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="rounded-lg border border-border bg-surface p-6">
@@ -183,6 +199,11 @@ export function Today() {
         />
       </div>
 
+      <OverloadBanner
+        overload={overload}
+        onAdjust={() => setAvailableTimeOpen(true)}
+      />
+
       <ScheduleCard
         items={schedule}
         onAdd={() => setDialog({ kind: "add" })}
@@ -218,6 +239,14 @@ export function Today() {
         canAdd={!topThreeMaxed}
         isPending={addTopThree.isPending}
         onAdd={handlePickTopThree}
+      />
+
+      <AvailableTimeDialog
+        open={availableTimeOpen}
+        onOpenChange={setAvailableTimeOpen}
+        currentMinutes={overload.availableMinutes}
+        onSubmit={handleSaveAvailableTime}
+        isPending={setAvailableTime.isPending}
       />
     </div>
   );

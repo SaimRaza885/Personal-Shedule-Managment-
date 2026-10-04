@@ -76,11 +76,17 @@ export const CONCEPT_STATUS = Object.freeze({
   REVIEW: "review",
 });
 
+// Keys for the local settings store
+export const SETTING_KEYS = Object.freeze({
+  AVAILABLE_MINUTES: "available_minutes",
+});
+
 // Default values
 export const DEFAULT_VALUES = Object.freeze({
   PLANNED_MINUTES: 30,
   DAILY_TOP_THREE_MAX: 3,
   LIGHTER_OPTIONS_MAX: 3,
+  AVAILABLE_MINUTES: 480,
 });
 
 // Date formats
