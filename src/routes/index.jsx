@@ -15,6 +15,7 @@ import { WatchLater } from "@/pages/watch-later/WatchLater";
 import { Reviews } from "@/pages/reviews/Reviews";
 import { Diary } from "@/pages/diary/Diary";
 import { Finance } from "@/pages/finance/Finance";
+import { Analytics } from "@/pages/analytics/Analytics";
 import { Placeholder } from "@/pages/Placeholder";
 
 export const router = createBrowserRouter([
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
       { path: "/diary", element: <Diary /> },
       { path: "/finance", element: <Finance /> },
       { path: "/reviews", element: <Reviews /> },
-      { path: "/analytics", element: <Placeholder title="Analytics" /> },
+      { path: "/analytics", element: <Analytics /> },
       { path: "/settings", element: <Placeholder title="Settings" /> },
     ],
   },

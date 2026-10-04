@@ -249,11 +249,21 @@ const initialSchema = [
   "CREATE INDEX IF NOT EXISTS idx_quick_captures_captured ON quick_captures(captured_at)",
 ];
 
+const taskCompletedAt = [
+  "ALTER TABLE tasks ADD COLUMN completed_at TEXT",
+  "CREATE INDEX IF NOT EXISTS idx_tasks_completed_at ON tasks(completed_at)",
+];
+
 export const MIGRATIONS = [
   {
     id: 1,
     name: "001_initial_schema",
     statements: initialSchema,
+  },
+  {
+    id: 2,
+    name: "002_task_completed_at",
+    statements: taskCompletedAt,
   },
 ];
 

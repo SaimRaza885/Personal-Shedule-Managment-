@@ -209,9 +209,18 @@ export async function setTaskStatus({ id, status }) {
   const now = new Date().toISOString();
 
   try {
+    // completed_at carries the analytics record of *when* work finished:
+    // stamped on the first transition into completed, kept stable on
+    // repeats, cleared whenever the task leaves the completed status.
     const result = await execute(
-      "UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?",
-      [status, now, id],
+      `UPDATE tasks
+       SET status = ?, updated_at = ?,
+           completed_at = CASE
+             WHEN ? = 'completed' THEN COALESCE(completed_at, ?)
+             ELSE NULL
+           END
+       WHERE id = ?`,
+      [status, now, status, now, id],
     );
     if (result.rowsAffected === 0) {
       throw new Error(`Task ${id} not found`);
