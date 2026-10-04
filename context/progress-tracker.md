@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 0 — Foundation & Setup
-**Last completed:** 02 SQLite Database Foundation
-**Next:** 03 Tauri Desktop Foundation
+**Phase:** Phase 1 — Today & Daily Execution
+**Last completed:** 03 Tauri Desktop Foundation
+**Next:** 04 Today Shell & What Should I Do Now?
 
 ---
 
@@ -18,7 +18,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 * [x] 01 Project Scaffold & Design Tokens
 * [x] 02 SQLite Database Foundation
-* [ ] 03 Tauri Desktop Foundation
+* [x] 03 Tauri Desktop Foundation
 
 ### Phase 1 — Today & Daily Execution
 
@@ -117,3 +117,4 @@ Update this file after every completed feature. Any AI agent reading this should
 *Add notes here as the build progresses — workarounds, patterns, anything that differs from the context files.*
 
 * **02 — Dev database engine:** `src/lib/database.js` routes to tauri-plugin-sql inside the desktop shell and to a sql.js (SQLite WASM) engine in a plain browser, so features can be developed and verified without the Rust toolchain. The dev engine persists to localStorage and exposes the same `execute`/`select` surface. All SQL uses `?` placeholders — the `$1` style breaks sql.js. Migrations (`src/lib/migrations.js`) run once per connection and are recorded in `_migrations`.
+* **03 — Tauri scaffold:** `src-tauri/` configured for Windows (identifier `com.saimraza.personalschedule`, app data dir = `%APPDATA%/com.saimraza.personalschedule/`, `sqlite:schedule.db` preloaded). Rust plugins: sql (sqlite), notification, fs, dialog — backups/export will build on fs+dialog in feature 25. **No Rust toolchain on this machine yet**: `tauri dev`/`tauri build` cannot run; UI is verified in a browser via the sql.js engine. Before the first desktop build: install Rust, then `npm run tauri icon <png>` to generate `src-tauri/icons/`.
