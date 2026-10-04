@@ -16,7 +16,7 @@ import { getTodaySchedule } from "@/services/today.service";
  * @typedef {{ id: string, taskId: string|null, taskTitle: string|null,
  *   startedAt: string, endedAt: string|null, plannedMinutes: number|null,
  *   actualMinutes: number, status: string, stepsTotal: number,
- *   stepsRemaining: number }} FocusSession
+ *   stepsRemaining: number, distractionsCount: number }} FocusSession
  */
 
 const SESSION_SELECT = `
@@ -33,7 +33,9 @@ const SESSION_SELECT = `
       AS stepsTotal,
     (SELECT COUNT(*) FROM task_steps ts
       WHERE ts.task_id = fs.task_id AND ts.is_completed = 0)
-      AS stepsRemaining
+      AS stepsRemaining,
+    (SELECT COUNT(*) FROM distractions d WHERE d.focus_session_id = fs.id)
+      AS distractionsCount
   FROM focus_sessions fs
   LEFT JOIN tasks t ON t.id = fs.task_id`;
 

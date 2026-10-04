@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 3 — Focus & Execution
-**Last completed:** 10 Focus Sessions
-**Next:** 11 Distraction Log
+**Last completed:** 11 Distraction Log
+**Next:** 12 Low-Energy Mode
 
 ---
 
@@ -35,7 +35,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 3 — Focus & Execution
 
 * [x] 10 Focus Sessions
-* [ ] 11 Distraction Log
+* [x] 11 Distraction Log
 * [ ] 12 Low-Energy Mode
 * [ ] 13 Overload Protection
 
@@ -131,3 +131,6 @@ Update this file after every completed feature. Any AI agent reading this should
 * **10 — No resume column:** focus_sessions has no paused-at/resume column, so pause stores elapsed minutes in `actual_minutes` and resume shifts `started_at` back by that amount (`new Date(Date.now() - actualMinutes * 60000)`). In every open state the invariant "elapsed = now − started_at" holds, which is exactly what the timer renders and what finish re-reads. Verified conservation with a real 2-minute session: pause stored 2, resume shifted started_at by 2 min, clock continued at 02:04 instead of restarting, complete rolled +2 onto the task's `actual_minutes` and set `ended_at`.
 * **10 — Single active session + task rollup:** `startFocusSession` guards against a second open session ("You already have a focus session in progress.") and auto-transitions the task not_started → in_progress via `setTaskStatus` (the single status-transition implementation from 09). `finishSession` handles complete AND cancel in one path: it refuses already-finished sessions, computes final actual minutes from wall-clock when running, and adds them to `tasks.actual_minutes` for both outcomes. Actively-focusing state is surfaced on Today's NowCard ("Focus in progress" replaces the Start button and routes to /focus).
 * **10 — Focus UI:** `/focus` page = active-session timer (1s ticker only while running) / candidates list / history, plus a post-session summary card (SessionSummary) shown after complete/cancel — the summary IS the feedback, so no extra toast there. Timer renders from `startedAt` + now rather than counting in memory, so a reload restores the correct elapsed time (verified by deep-link reload: clock resumed at 00:29).
+* **11 — Distraction data layer:** `services/distraction.service.js` owns the distractions table SQL (`logDistraction`, `listSessionDistractions`); `hooks/useDistractions.js` owns `useSessionDistractions(sessionId)` (key `["distractions", sessionId]`, disabled without an id) and `useLogDistraction` (invalidates `["focus"]` and `["distractions"]`). The `["focus"]` invalidation is what refreshes the live "N logged this session" count — `SESSION_SELECT` in `focus.service.js` gained a `distractionsCount` subselect so the timer and history read the count from the same row fetch, no extra query.
+* **11 — Distraction capture UX:** `DistractionDialog` (same conventions as `ScheduleBlockDialog`) offers five one-tap preset chips (Phone, People, Notifications, Noise, Mind wandering) that fill the reason field, plus free-text reason (required, ≤80) and optional notes (≤300). Framing everywhere is "for awareness, not judgment" — the log button lives on the timer, the summary groups entries by reason with counts (`Phone ×2`), and history rows append "· N distraction(s)". Verification included the edge cases: empty-reason submit shows the zod error and keeps the dialog open; both preset and typed entries persisted correctly; the summary read "2 distractions logged." with reason chips after completion.
+* **11 — No session rollup:** Distractions are deliberately NOT rolled into any task or daily metric — they exist for personal awareness now and analytics later (feature 23). `distractions.focus_session_id` has `ON DELETE CASCADE`, so removing a session cleans its entries; the count shown on finished history rows is therefore stable.

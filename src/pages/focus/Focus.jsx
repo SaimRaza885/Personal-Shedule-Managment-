@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Play, Timer } from "lucide-react";
+import { BellRing, Play, Timer } from "lucide-react";
+import { DistractionDialog } from "@/components/focus/DistractionDialog";
 import { FocusControls } from "@/components/focus/FocusControls";
 import { FocusHistory } from "@/components/focus/FocusHistory";
 import { FocusTimer } from "@/components/focus/FocusTimer";
@@ -10,6 +11,7 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { Button } from "@/components/ui/button";
+import { useLogDistraction, useSessionDistractions } from "@/hooks/useDistractions";
 import {
   useActiveFocusSession,
   useCancelFocusSession,
@@ -37,11 +39,17 @@ export function Focus() {
   const resumeFocus = useResumeFocusSession();
   const completeFocus = useCompleteFocusSession();
   const cancelFocus = useCancelFocusSession();
+  const logDistraction = useLogDistraction();
 
   const [summary, setSummary] = useState(null);
+  const [distractionOpen, setDistractionOpen] = useState(false);
 
   const active = activeQuery.data ?? null;
   const candidates = candidatesQuery.data ?? [];
+
+  const summaryDistractionsQuery = useSessionDistractions(
+    summary ? summary.id : null,
+  );
 
   const handleStart = async (candidate) => {
     try {
@@ -97,6 +105,20 @@ export function Focus() {
     }
   };
 
+  const handleLogDistraction = async (values) => {
+    try {
+      await logDistraction.mutateAsync({
+        focusSessionId: active.id,
+        reason: values.reason,
+        notes: values.notes,
+      });
+      setDistractionOpen(false);
+      toast.success("Distraction logged");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
   if (activeQuery.isLoading || historyQuery.isLoading) {
     return <LoadingState message="Loading your focus session&hellip;" />;
   }
@@ -130,7 +152,11 @@ export function Focus() {
       </div>
 
       {summary ? (
-        <SessionSummary session={summary} onDismiss={() => setSummary(null)} />
+        <SessionSummary
+          session={summary}
+          distractions={summaryDistractionsQuery.data ?? []}
+          onDismiss={() => setSummary(null)}
+        />
       ) : active ? (
         <FocusTimer session={active}>
           <FocusControls
@@ -141,6 +167,22 @@ export function Focus() {
             onComplete={handleComplete}
             onCancel={handleCancel}
           />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDistractionOpen(true)}
+              disabled={controlsPending}
+            >
+              <BellRing className="size-4" />
+              Log distraction
+            </Button>
+            {active.distractionsCount > 0 && (
+              <span className="text-xs text-text-muted">
+                {active.distractionsCount} logged this session
+              </span>
+            )}
+          </div>
         </FocusTimer>
       ) : (
         <section className="rounded-lg border border-border bg-surface p-6">
@@ -195,6 +237,13 @@ export function Focus() {
       )}
 
       <FocusHistory items={historyQuery.data ?? []} />
+
+      <DistractionDialog
+        open={distractionOpen}
+        onOpenChange={setDistractionOpen}
+        onSubmit={handleLogDistraction}
+        isPending={logDistraction.isPending}
+      />
     </div>
   );
 }

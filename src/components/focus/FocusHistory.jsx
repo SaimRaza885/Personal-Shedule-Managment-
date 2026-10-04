@@ -30,6 +30,13 @@ export function FocusHistory({ items }) {
                 {session.plannedMinutes != null
                   ? `${formatMinutes(session.actualMinutes)} of ${formatMinutes(session.plannedMinutes)}`
                   : formatMinutes(session.actualMinutes)}
+                {session.distractionsCount > 0
+                  ? ` \u00b7 ${session.distractionsCount} ${
+                      session.distractionsCount === 1
+                        ? "distraction"
+                        : "distractions"
+                    }`
+                  : ""}
               </span>
               <span className={focusBadgeClass(session.status)}>
                 {focusStatusLabel(session.status)}
