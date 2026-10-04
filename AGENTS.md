@@ -20,6 +20,14 @@ Read in this exact order before any implementation:
 8. context/build-plan.md
 9. context/progress-tracker.md
 
+## Workflow Rules
+
+* **One feature at a time** — Complete one feature fully, commit, push to GitHub, then start next
+* **Small commits** — Build something small, commit with clear message, push to GitHub
+* **Feature completion** — A feature is done when: UI works with mock data → logic wired to database → tests pass → progress-tracker.md updated
+* **Push after each feature** — Do not batch multiple features in one push
+* **Update progress** — After each feature: update `progress-tracker.md` and `ui-registry.md`
+
 ## Rules That Never Change
 
 * Never use hardcoded hex values or raw Tailwind color classes
