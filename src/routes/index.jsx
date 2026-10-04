@@ -16,7 +16,7 @@ import { Reviews } from "@/pages/reviews/Reviews";
 import { Diary } from "@/pages/diary/Diary";
 import { Finance } from "@/pages/finance/Finance";
 import { Analytics } from "@/pages/analytics/Analytics";
-import { Placeholder } from "@/pages/Placeholder";
+import { Settings } from "@/pages/settings/Settings";
 
 export const router = createBrowserRouter([
   {
@@ -39,7 +39,7 @@ export const router = createBrowserRouter([
       { path: "/finance", element: <Finance /> },
       { path: "/reviews", element: <Reviews /> },
       { path: "/analytics", element: <Analytics /> },
-      { path: "/settings", element: <Placeholder title="Settings" /> },
+      { path: "/settings", element: <Settings /> },
     ],
   },
 ]);

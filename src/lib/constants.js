@@ -99,6 +99,9 @@ export const CONVERTED_TYPE = Object.freeze({
 // Keys for the local settings store
 export const SETTING_KEYS = Object.freeze({
   AVAILABLE_MINUTES: "available_minutes",
+  NOTIFICATIONS_ENABLED: "notifications_enabled",
+  NOTIFICATION_LEAD_MINUTES: "notification_lead_minutes",
+  EVENING_REVIEW_TIME: "evening_review_time",
 });
 
 // Default values
@@ -107,6 +110,8 @@ export const DEFAULT_VALUES = Object.freeze({
   DAILY_TOP_THREE_MAX: 3,
   LIGHTER_OPTIONS_MAX: 3,
   AVAILABLE_MINUTES: 480,
+  NOTIFICATION_LEAD_MINUTES: 10,
+  EVENING_REVIEW_TIME: "21:00",
 });
 
 // Date formats

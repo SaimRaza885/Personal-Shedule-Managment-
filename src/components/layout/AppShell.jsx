@@ -2,8 +2,11 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { AppErrorBoundary } from "@/components/feedback/AppErrorBoundary";
+import { useNotificationWatcher } from "@/hooks/useNotifications";
 
 export function AppShell() {
+  useNotificationWatcher();
+
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
