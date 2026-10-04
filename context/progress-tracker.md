@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 1 — Today & Daily Execution
-**Last completed:** 05 Daily Schedule
-**Next:** 06 Daily Top 3
+**Last completed:** 06 Daily Top 3
+**Next:** 07 Goals & Milestones
 
 ---
 
@@ -24,7 +24,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 * [x] 04 Today Shell & What Should I Do Now?
 * [x] 05 Daily Schedule
-* [ ] 06 Daily Top 3
+* [x] 06 Daily Top 3
 
 ### Phase 2 — Goals & Work
 
@@ -121,3 +121,4 @@ Update this file after every completed feature. Any AI agent reading this should
 * **04 — Today data flow:** `services/today.service.js` owns the SQL (schedule join + step counts via subselects, top-3 join); `hooks/useToday.js` owns TanStack Query keys `["today","schedule",date]` / `["today","top-three",date]`. Times are stored as `HH:mm` strings, so `determineNowState` compares lexicographically: "now" = the actionable block containing the current time; when none matches, the hero falls back to the next upcoming block; when none remains it shows the empty state. The Start button logs only — focus-session start is feature 10.
 * **05 — Schedule mutations:** `services/schedule.service.js` owns add/edit/remove of blocks; `hooks/useSchedule.js` owns the three mutations, each invalidating `["today"]` on success. Add creates task + `daily_schedules` row in one transaction (`planned_minutes` = block duration, synced to `tasks.planned_minutes`). Edit changes times only and re-syncs `planned_minutes`. Remove deletes only the `daily_schedules` row — the task survives as an orphan by design (the schedule is not the task's owner). `daily_schedules` is the schedule source of truth; `tasks.scheduled_date/start_time/end_time` stay NULL.
 * **05 — devDatabase `getRowsModified` fix:** sql.js resets its change counter when a statement is freed, so `db.getRowsModified()` must be read **before** `stmt.free()`. Reading it after made every UPDATE/DELETE report `rowsAffected: 0`, which broke the not-found guards in services. The engine contract now matches tauri-plugin-sql. Also: `db.export()` (used for persistence) silently ends an open transaction, so the dev engine persists only when not inside BEGIN/COMMIT — real tauri-plugin-sql handles this at the pool level, so keep mutations wrapped in transactions regardless of engine.
+* **06 — Top 3 mutations:** `services/top-three.service.js` owns add/remove/move SQL; `hooks/useTopThree.js` owns candidates query (key `["today","top-three-candidates",date]`) + three mutations invalidating `["today"]`. Add assigns `position = COALESCE(MAX(position),0)+1` inside a transaction with guards: task must be scheduled today and actionable, not already in the Top 3, and count `< DEFAULT_VALUES.DAILY_TOP_THREE_MAX`. Remove and move rewrite positions via **delete + re-insert inside the transaction**: `UNIQUE(date, position)` in SQLite is always immediate per-row (DEFERRABLE applies only to FKs), so swapping positions with UPDATE collides on the intermediate state — and with only 3 rows there is no free temp value inside the 1..3 CHECK. Same ids/created_at are preserved on re-insert. Candidates = today's scheduled, actionable, not-yet-picked tasks ordered by start_time.

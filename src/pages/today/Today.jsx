@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { NowCard } from "@/components/today/NowCard";
 import { TopThreeCard } from "@/components/today/TopThreeCard";
+import { TopThreePickerDialog } from "@/components/today/TopThreePickerDialog";
 import { DailyProgressCard } from "@/components/today/DailyProgressCard";
 import { ScheduleCard } from "@/components/today/ScheduleCard";
 import { ScheduleBlockDialog } from "@/components/schedule/ScheduleBlockDialog";
@@ -12,6 +13,13 @@ import {
   useRemoveScheduleBlock,
   useUpdateScheduleBlock,
 } from "@/hooks/useSchedule";
+import {
+  useAddTopThree,
+  useMoveTopThree,
+  useRemoveTopThree,
+  useTopThreeCandidates,
+} from "@/hooks/useTopThree";
+import { DEFAULT_VALUES } from "@/lib/constants";
 
 function friendlyError(error) {
   return error instanceof Error
@@ -32,12 +40,46 @@ export function Today() {
     refetch,
   } = useTodayData();
   const [dialog, setDialog] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const addBlock = useAddScheduleBlock();
   const updateBlock = useUpdateScheduleBlock();
   const removeBlock = useRemoveScheduleBlock();
+  const candidatesQuery = useTopThreeCandidates(date);
+  const addTopThree = useAddTopThree();
+  const removeTopThree = useRemoveTopThree();
+  const moveTopThree = useMoveTopThree();
+
+  const topThreeMaxed = topThree.length >= DEFAULT_VALUES.DAILY_TOP_THREE_MAX;
+  const pickCandidates = candidatesQuery.data ?? [];
 
   const handleStart = (task) => {
     console.log("[Today] start task", task?.id);
+  };
+
+  const handlePickTopThree = async (candidate) => {
+    try {
+      await addTopThree.mutateAsync({ date, taskId: candidate.taskId });
+      toast.success("Added to your Top 3");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
+  const handleRemoveTopThree = async (entry) => {
+    try {
+      await removeTopThree.mutateAsync({ date, id: entry.id });
+      toast.success("Removed from your Top 3");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
+  const handleMoveTopThree = async (entry, direction) => {
+    try {
+      await moveTopThree.mutateAsync({ date, id: entry.id, direction });
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
   };
 
   const handleDialogSubmit = async (values) => {
@@ -99,7 +141,12 @@ export function Today() {
       <NowCard current={current} upcoming={upcoming} onStart={handleStart} />
 
       <div className="grid grid-cols-2 gap-6">
-        <TopThreeCard items={topThree} />
+        <TopThreeCard
+          items={topThree}
+          onPick={() => setPickerOpen(true)}
+          onRemove={handleRemoveTopThree}
+          onMove={handleMoveTopThree}
+        />
         <DailyProgressCard
           completed={progress.completed}
           total={progress.total}
@@ -135,6 +182,15 @@ export function Today() {
           isPending={addBlock.isPending || updateBlock.isPending}
         />
       )}
+
+      <TopThreePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        candidates={pickCandidates}
+        canAdd={!topThreeMaxed}
+        isPending={addTopThree.isPending}
+        onAdd={handlePickTopThree}
+      />
     </div>
   );
 }
