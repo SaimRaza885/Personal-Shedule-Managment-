@@ -80,6 +80,7 @@ export const CONCEPT_STATUS = Object.freeze({
 export const DEFAULT_VALUES = Object.freeze({
   PLANNED_MINUTES: 30,
   DAILY_TOP_THREE_MAX: 3,
+  LIGHTER_OPTIONS_MAX: 3,
 });
 
 // Date formats

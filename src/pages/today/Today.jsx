@@ -22,6 +22,7 @@ import {
   useTopThreeCandidates,
 } from "@/hooks/useTopThree";
 import { DEFAULT_VALUES } from "@/lib/constants";
+import { useEnergyStore } from "@/stores/energy.store";
 
 function friendlyError(error) {
   return error instanceof Error
@@ -37,11 +38,14 @@ export function Today() {
     current,
     upcoming,
     progress,
+    energy,
+    lighterOptions,
     isLoading,
     isError,
     refetch,
   } = useTodayData();
   const navigate = useNavigate();
+  const setEnergy = useEnergyStore((state) => state.setEnergy);
   const [dialog, setDialog] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const activeFocusQuery = useActiveFocusSession();
@@ -157,6 +161,9 @@ export function Today() {
         current={current}
         upcoming={upcoming}
         onStart={handleStart}
+        energy={energy}
+        onSelectEnergy={setEnergy}
+        lighterOptions={lighterOptions}
         focusActive={Boolean(activeFocusQuery.data)}
         startPending={startFocus.isPending}
       />

@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 3 — Focus & Execution
-**Last completed:** 11 Distraction Log
-**Next:** 12 Low-Energy Mode
+**Last completed:** 12 Low-Energy Mode
+**Next:** 13 Overload Protection
 
 ---
 
@@ -36,7 +36,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 * [x] 10 Focus Sessions
 * [x] 11 Distraction Log
-* [ ] 12 Low-Energy Mode
+* [x] 12 Low-Energy Mode
 * [ ] 13 Overload Protection
 
 ### Phase 4 — Capture & Ideas
@@ -134,3 +134,6 @@ Update this file after every completed feature. Any AI agent reading this should
 * **11 — Distraction data layer:** `services/distraction.service.js` owns the distractions table SQL (`logDistraction`, `listSessionDistractions`); `hooks/useDistractions.js` owns `useSessionDistractions(sessionId)` (key `["distractions", sessionId]`, disabled without an id) and `useLogDistraction` (invalidates `["focus"]` and `["distractions"]`). The `["focus"]` invalidation is what refreshes the live "N logged this session" count — `SESSION_SELECT` in `focus.service.js` gained a `distractionsCount` subselect so the timer and history read the count from the same row fetch, no extra query.
 * **11 — Distraction capture UX:** `DistractionDialog` (same conventions as `ScheduleBlockDialog`) offers five one-tap preset chips (Phone, People, Notifications, Noise, Mind wandering) that fill the reason field, plus free-text reason (required, ≤80) and optional notes (≤300). Framing everywhere is "for awareness, not judgment" — the log button lives on the timer, the summary groups entries by reason with counts (`Phone ×2`), and history rows append "· N distraction(s)". Verification included the edge cases: empty-reason submit shows the zod error and keeps the dialog open; both preset and typed entries persisted correctly; the summary read "2 distractions logged." with reason chips after completion.
 * **11 — No session rollup:** Distractions are deliberately NOT rolled into any task or daily metric — they exist for personal awareness now and analytics later (feature 23). `distractions.focus_session_id` has `ON DELETE CASCADE`, so removing a session cleans its entries; the count shown on finished history rows is therefore stable.
+* **12 — Energy selection state:** `src/stores/energy.store.js` is the project's first Zustand store — the selection is UI state (library-docs.md lists "Low-Energy Mode selection" as a store use case), persisted to `localStorage` key `psm-energy-mode` via the persist middleware with `partialize` to `{ energy }` only. `EnergySelector` chips (High/Medium/Low) live in the NowCard header; clicking the selected chip deselects (`null` = no mode). Only **Low** triggers behavior — High/Medium are record-keeping states. `useTodayData()` reads the store and derives `lighterOptions` so the store itself stays free of business logic.
+* **12 — Lighter options ranking (read-only):** `findLighterOptions(schedule, timeNow, { excludeTaskId, limit })` in `today.service.js` ranks actionable blocks that still have time left (`endTime > timeNow`) by energy level (low → medium → unknown → high, `ENERGY_RANK`), then shorter `plannedMinutes`, then earlier `startTime`; capped at `DEFAULT_VALUES.LIGHTER_OPTIONS_MAX` (3). `getTodaySchedule` now also selects `t.priority` / `t.energy_level`. The invariant holds — the mode only changes what is **surfaced**: verified the schedule rows are byte-identical before/after toggling modes, and each suggestion's Start reuses Today's existing `handleStart` (starts a real focus session for that task — verified it navigated to /focus with "Fix small issue" and its 25 min). Reload persistence verified; console clean.
+* **12 — Verification seeding note:** the UI cannot yet create a scheduled task with an energy level (ScheduleBlockDialog creates tasks by title only; energy editing lives in TaskFormDialog) — linking these is feature 26. Feature-12 verification therefore seeded a mixed-energy day via service probes (`addScheduleBlock` + full `updateTask`), then confirmed the expected order (Fix small issue, Review PR, Read documentation) and that lower-ranked Groceries was dropped by the limit while the current block was excluded.

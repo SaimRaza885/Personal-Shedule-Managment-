@@ -76,7 +76,7 @@ Same section card. Per metric: label row `mb-1.5 flex justify-between text-sm` (
 `statusBadgeClass(status)` returns `rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap` + tone: not_started `bg-surface-secondary text-text-secondary`, in_progress `bg-accent-light text-accent`, completed `bg-success-light text-success-foreground`, paused `bg-warning-light text-warning-foreground`, cancelled `bg-surface-secondary text-text-muted`. `statusLabel(status)` maps to display text. Any new status badge must reuse this helper.
 
 **Today page composition** — `src/pages/today/Today.jsx`
-`space-y-6`: NowCard; then `grid grid-cols-2 gap-6` with TopThreeCard + DailyProgressCard; then ScheduleCard. Page-level loading: `LoadingState`; page-level error: `ErrorState` with retry (`refetch`), never raw error text. Feature 05 added schedule management: `ScheduleBlockDialog` controlled by a `dialog` state (`{ kind: "add" }` | `{ kind: "edit", block }`), mutations via `useAddScheduleBlock`/`useUpdateScheduleBlock`/`useRemoveScheduleBlock`, feedback via `toast.success`/`toast.error` from `sonner` (no raw error text). Feature 06 added Top 3 management: `TopThreePickerDialog` controlled by a boolean `pickerOpen`, candidates via `useTopThreeCandidates(date)`, mutations via `useAddTopThree`/`useRemoveTopThree`/`useMoveTopThree` (move is silent, add/remove toast). Today page handles its own loading/error inline (not the page-level primitives) because NowCard/progress depend on the same query.
+`space-y-6`: NowCard; then `grid grid-cols-2 gap-6` with TopThreeCard + DailyProgressCard; then ScheduleCard. Page-level loading: `LoadingState`; page-level error: `ErrorState` with retry (`refetch`), never raw error text. Feature 05 added schedule management: `ScheduleBlockDialog` controlled by a `dialog` state (`{ kind: "add" }` | `{ kind: "edit", block }`), mutations via `useAddScheduleBlock`/`useUpdateScheduleBlock`/`useRemoveScheduleBlock`, feedback via `toast.success`/`toast.error` from `sonner` (no raw error text). Feature 06 added Top 3 management: `TopThreePickerDialog` controlled by a boolean `pickerOpen`, candidates via `useTopThreeCandidates(date)`, mutations via `useAddTopThree`/`useRemoveTopThree`/`useMoveTopThree` (move is silent, add/remove toast). Feature 12 passes `energy`/`onSelectEnergy` (`setEnergy` from the energy store) and `lighterOptions` (from `useTodayData`) to NowCard. Today page handles its own loading/error inline (not the page-level primitives) because NowCard/progress depend on the same query.
 
 ### Schedule section (feature 05)
 
@@ -206,6 +206,20 @@ Feature 11: on the timer, a `mt-3 flex flex-wrap items-center gap-3` row adds an
 
 **NowCard focus state (update)** — `src/components/today/NowCard.jsx`
 Feature 10 wired the Start button: props gained `focusActive` / `startPending`; while a session is open the button reads "Focus in progress" (disabled while starting) and Today's `handleStart` routes to `/focus` instead of double-starting.
+
+### Low-Energy Mode section (feature 12)
+
+**EnergySelector** — `src/components/today/EnergySelector.jsx`
+Chips row `flex flex-wrap items-center gap-2`: label `text-xs text-text-muted` "Energy right now" + three toggle chips (High / Medium / Low via `ENERGY_LEVEL`). Chip base `rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors`; selected `border-transparent bg-accent-light text-accent`, unselected `border-border text-text-secondary hover:border-accent hover:text-accent`. Each chip carries `aria-pressed`; clicking the selected chip deselects (`null` = no mode). Props `{ value, onChange }` — presentational, owns no data.
+
+**Energy store** — `src/stores/energy.store.js`
+First Zustand store in the project: `create(persist(...))` with `{ energy: null, setEnergy }`, `localStorage` key `psm-energy-mode`, `partialize` to `{ energy }`. Client/UI state only (library-docs.md lists "Low-Energy Mode selection") — no business rules; the lightness ranking lives in `today.service.js`.
+
+**NowCard low-energy state (update)** — `src/components/today/NowCard.jsx`
+Feature 12: props gained `energy` / `onSelectEnergy` / `lighterOptions`; an `EnergySelector` row sits under the header (`mb-4`) for every state (even the empty schedule). When `energy === ENERGY_LEVEL.LOW` and options exist, a `mt-4 border-t border-border-light pt-4` block shows the "Low energy mode" badge (`rounded-full bg-warning-light px-2 py-0.5 text-xs font-medium whitespace-nowrap text-warning-foreground`) + `text-xs text-text-muted` copy "Lighter options from today's plan — your schedule stays as it is." and a `ul.divide-y divide-border-light` of ranked rows `flex items-center gap-3 py-2`: time col `w-36 shrink-0 text-sm text-text-secondary`, title `min-w-0 flex-1 truncate text-sm font-medium text-text-primary`, meta `shrink-0 text-xs text-text-muted` "{n} min · {energyLabel}" (label appended only when set), outline `Button size="sm"` with `Play size-4` "Start" → Today's existing `onStart`. Purely a suggestion surface — the plan is never modified.
+
+**Lighter options data layer** — `src/services/today.service.js` + `src/hooks/useToday.js`
+`findLighterOptions(schedule, timeNow, { excludeTaskId, limit })` ranks actionable blocks that still have time left by `ENERGY_RANK` (low → medium → unknown → high), then shorter `plannedMinutes`, then earlier `startTime`, capped at `DEFAULT_VALUES.LIGHTER_OPTIONS_MAX` (3). `getTodaySchedule` also selects `t.priority` / `t.energy_level` (`ScheduleItem` typedef extended). `useTodayData()` reads the energy store and computes `lighterOptions` only when `energy === ENERGY_LEVEL.LOW`, excluding the currently displayed task; returns `energy` + `lighterOptions` alongside the existing fields. Components never touch SQL directly.
 
 ### shadcn/ui primitives (generated, JS mode)
 
