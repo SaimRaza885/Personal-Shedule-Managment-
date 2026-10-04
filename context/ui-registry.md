@@ -402,7 +402,7 @@ Appended id 2 (`002_task_completed_at`): `ALTER TABLE tasks ADD COLUMN completed
 **Route (update)** — `src/routes/index.jsx`
 `/analytics` swapped from Placeholder to `Analytics` (the sidebar entry — "Analytics" with the `BarChart3` icon — existed since the shell was built).
 
-### Settings section (feature 24)
+### Settings section (features 24–25)
 
 **Settings page** — `src/pages/settings/Settings.jsx`
 Header `h1 text-xl font-semibold text-text-primary` "Settings" + `text-sm text-text-muted` subtitle "How the app behaves on this machine. Everything stays local." Body: page-level `LoadingState` "Loading your settings…" / `ErrorState` "Couldn't load your settings" (retry = refetch), then one section card `rounded-lg border border-border bg-surface p-5`: `h2 text-base font-semibold text-text-primary` "Desktop notifications" + `text-sm text-text-muted` description. RHF+zod form (`notificationSchema`: `enabled` boolean; `leadMinutes` string `^\d+$` + refine 0–60; `eveningReviewTime` empty-or-`HH:mm` regex): the master toggle row is a `FormItem className="flex flex-row items-center justify-between rounded-md bg-surface-secondary p-3"` with `FormLabel` "Desktop reminders" + `<Switch checked={field.value} onCheckedChange={field.onChange} />`; below, `grid grid-cols-2 gap-4` with lead-minutes `Input type="number" min=0 max=60 step=1` (hint `text-xs text-text-muted` "Minutes before the start time. 0 = right at start.") and `Input type="time"` labeled "Evening review time" (hint "Leave empty to turn this reminder off."). Footer `flex flex-wrap items-center justify-between gap-3`: left `variant="outline" size="sm"` "Send test notification" (`BellRing size-4` → `ensureNotificationPermission` + `sendDesktopNotification`), right submit "Save settings" with `Loader2` "Saving…". Save → `setSettings.mutateAsync({ enabled, leadMinutes: Number, eveningReviewTime })` → toast "Notification settings saved". Reset effect keyed on the loaded settings primitives.
@@ -415,6 +415,15 @@ Framework-free helper module (not a component): `notificationsSupported()`, `ens
 
 **Settings data layer** — `src/services/settings.service.js` + `src/hooks/useSettings.js`
 `getNotificationSettings()` / `setNotificationSettings(...)` extend the feature-13 settings service (defensive reads, defaults on missing/invalid, empty-string review time = off, three-key upsert via `ON CONFLICT (key) DO UPDATE`). `SETTING_KEYS` / `DEFAULT_VALUES` extended in `constants.js`. `useNotificationSettings()` owns key `["settings","notifications"]`; `useSetNotificationSettings()` invalidates `["settings"]`.
+
+**Backup & restore section** — `src/pages/settings/Settings.jsx` (feature 25)
+Second section card `rounded-lg border border-border bg-surface p-5` on the same page, rendered **after** the notifications card and independently of its form state: `h2 text-sm font-semibold text-text-primary` "Backup & restore" + `text-sm text-text-muted` description. Status line `text-xs text-text-muted`: "Last backup: {formatTimestamp} · {size} · {filePath}" from `useBackupHistory()[0]`, else "No backups yet — export one to keep a safe copy." Buttons row `mt-4 flex items-center gap-2`: "Export backup" (default variant, `Download size-4`, `Loader2` spin + "Exporting…" while pending) and "Restore backup" (`variant="outline"`, `Upload size-4`). Restore opens a `Dialog` `sm:max-w-[440px]` — title "Restore from a backup?", destructive copy "This replaces everything currently in the app…", footer Cancel (`variant="outline"`) + "Choose file & restore" (`variant="destructive"`). Toasts: "Backup exported" / "Backup restored"; failures surface the service's friendly message via `toast.error`.
+
+**Backup data layer** — `src/services/backup.service.js` + `src/hooks/useBackup.js`
+`backup.service.js` owns snapshot/restore SQL (see progress-tracker 25 notes): `buildSnapshot()`, `parseSnapshot(content)`, `restoreSnapshot(tables)`, best-effort `recordBackup({filePath, size})`, `listRecentBackups(limit = 5)`. All 20 app tables via `TABLE_COLUMNS` (`_migrations` excluded). `useBackupHistory()` owns key `["backups"]`; `useExportBackup` / `useRestoreBackup` — restore invalidates **all** query keys because it can replace every table. Components never touch SQL directly.
+
+**File transfer** — `src/lib/fileTransfer.js` (feature 25)
+Framework-free helper module (not a component): `saveJsonFile({fileName, content})` → `{saved, path}` and `openJsonFile()` → `{picked, path, content}`; cancel is not an error. Tauri path uses `@tauri-apps/plugin-dialog` + `@tauri-apps/plugin-fs`; browser fallback uses Blob download and an offscreen file input. See progress-tracker 25 notes.
 
 **Route (update)** — `src/routes/index.jsx`
 `/settings` swapped from Placeholder to `Settings` — the last Placeholder route; `src/pages/Placeholder.jsx` was deleted.

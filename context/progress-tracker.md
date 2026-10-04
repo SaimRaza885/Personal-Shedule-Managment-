@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 9 — Notifications & Local Data
-**Last completed:** 24 Windows Desktop Notifications
-**Next:** 25 Backup / Restore / Export
+**Phase:** Phase 10 — Wiring, Hardening & Release
+**Last completed:** 25 Backup / Restore / Export
+**Next:** 26 Wire Today & Planning Together
 
 ---
 
@@ -67,7 +67,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 9 — Notifications & Local Data
 
 * [x] 24 Windows Desktop Notifications
-* [ ] 25 Backup / Restore / Export
+* [x] 25 Backup / Restore / Export
 
 ### Phase 10 — Wiring, Hardening & Release
 
@@ -168,3 +168,6 @@ Update this file after every completed feature. Any AI agent reading this should
 * **24 — Notification delivery (`lib/notifications.js`):** one module hides the Tauri/browser split — `notificationsSupported()`, `ensureNotificationPermission()` (Tauri: `isPermissionGranted` else `requestPermission`; browser: granted→true, denied→false, default→request), `sendDesktopNotification({title, body})` which **never throws** (returns true/false, logs via `console.error`). In Tauri it goes through `@tauri-apps/plugin-notification` (`sendNotification` is sync); in a plain browser it only fires when `Notification.permission === "granted"` so dev-mode stubs can observe it. Plugin, capabilities (`notification:default`) and the Rust `init()` were already in place from feature 03.
 * **24 — Reminder watcher (`hooks/useNotifications.js`):** `useNotificationWatcher()` runs in `AppShell` and owns **no UI** — on mount and every 30s it checks (a) schedule blocks in the reminder window (actionable status, not ended, `start − lead ≤ now ≤ start + 5` grace) and (b) the evening review window (`eveningReviewTime ≤ now ≤ +60`, suppressed if a daily review row exists for the date). Fired keys are deduped in a `useRef(Set)` (`block:{id}:{date}` / `review:{date}`) so a live tick and the effect re-run can't double-send; a date rollover mid-session resets via `setDate`. The pure helpers (`isBlockInReminderWindow`, `isReviewDue`) are exported and were boundary-tested — 12/12 cases (lead edge, grace edge, completed/cancelled/ended excluded, lead 0, review window edges). Verified live in-browser with a `Notification` stub: block added in-window fired immediately with correct title/body, evening review fired once, count stable across multiple ticks, master-off **gated every send**.
 * **24 — Settings UI:** `/settings` swapped from `Placeholder` (file deleted — it had no other consumer); page = header ("Settings", subtitle "How the app behaves on this machine. Everything stays local.") + a "Desktop notifications" section card: RHF+zod form with the new `Switch` primitive (shadcn, `radix-ui` package — the project's 14th primitive; one import aligned to `@/lib/utils`), lead-minutes number input (0–60, two-layer validation like feature 13), `Input type="time"` for the evening review (**empty = off**), and a "Send test notification" button that requests permission then fires a test toast. Save → upsert → "Notification settings saved". Switch is Radix: JS `.click()` works; verified off→save→in-window block→**zero sends**, reload shows persisted 15 / 20:40.
+* **25 — Backup service (`services/backup.service.js`):** the snapshot is a JSON document `{ app: "personal-schedule-management", version: 1, exportedAt, tables }` covering **all 20 app tables** (`_migrations` excluded by design). `TABLE_COLUMNS` declares the explicit column list per table — a new migration must extend this map or its columns silently miss backups. `buildSnapshot()` reads every table with `SELECT *` and returns `{content, fileName: "schedule-backup-yyyy-MM-dd.json", byteSize}`. `parseSnapshot()` validates app marker, version, and that every table value is an array before anything is touched. `restoreSnapshot()` runs one transaction: DELETE all tables in reverse insert-order, INSERT in parents-first order, COMMIT — FK-safe in both engines. `recordBackup()` is best-effort (history row of path/size/time; a logging failure never fails an export) and `listRecentBackups(limit)` powers the Settings "Last backup" line.
+* **25 — File transfer (`lib/fileTransfer.js`):** one module hides the Tauri/browser split for saving and picking files. Tauri (`plugin-dialog` + `plugin-fs`): native Save/Open dialog → `writeTextFile`/`readTextFile`; cancel returns `{saved:false}` / `{picked:false}` — cancel is **not** an error. Browser fallback: Blob + anchor download and a hidden `<input type="file">` kept offscreen (not `display:none`) so it stays clickable/uploadable in dev verification. Plugins, capabilities (`fs:default`, `dialog:default`) and Rust `init()` were already in place from feature 03 — **no Tauri config changes were needed**.
+* **25 — Hooks and Settings UI:** `hooks/useBackup.js` owns key `["backups"]` (history) plus export and restore mutations. **Restore invalidates ALL query keys** (`queryClient.invalidateQueries()` with no filters) because it can replace every table at once. Settings gained a "Backup & restore" section card (renders independently of the notifications form state): last-backup line or "No backups yet" empty state, Export button, and a Restore button opening a destructive confirm dialog ("This replaces everything currently in the app…"). Verified in-browser end-to-end: export → toast + history row (1.1 KB); invalid file → friendly "doesn't look like a Schedule backup" and DB untouched; valid file → "Backup restored" and goal/settings/backups rows all reverted (mutation round-trip).
