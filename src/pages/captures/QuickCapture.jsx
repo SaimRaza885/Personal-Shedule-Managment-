@@ -5,10 +5,12 @@ import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import {
   useCaptures,
+  useConvertCaptureToIdea,
   useConvertCaptureToTask,
   useCreateCapture,
   useDeleteCapture,
 } from "@/hooks/useCaptures";
+import { CONVERTED_TYPE } from "@/lib/constants";
 
 function friendlyError(error) {
   return error instanceof Error
@@ -20,6 +22,7 @@ export function QuickCapture() {
   const { data, isLoading, isError, refetch } = useCaptures();
   const createCapture = useCreateCapture();
   const convertToTask = useConvertCaptureToTask();
+  const convertToIdea = useConvertCaptureToIdea();
   const removeCapture = useDeleteCapture();
 
   const captures = data ?? [];
@@ -36,10 +39,19 @@ export function QuickCapture() {
     }
   };
 
-  const handleConvert = async (capture) => {
+  const handleConvertToTask = async (capture) => {
     try {
       await convertToTask.mutateAsync({ id: capture.id });
       toast.success("Converted to a task");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
+  const handleConvertToIdea = async (capture) => {
+    try {
+      await convertToIdea.mutateAsync({ id: capture.id });
+      toast.success("Converted to an idea");
     } catch (error) {
       toast.error(friendlyError(error));
     }
@@ -56,7 +68,14 @@ export function QuickCapture() {
 
   const convertingId = convertToTask.isPending
     ? convertToTask.variables?.id
-    : null;
+    : convertToIdea.isPending
+      ? convertToIdea.variables?.id
+      : null;
+  const convertingKind = convertToTask.isPending
+    ? CONVERTED_TYPE.TASK
+    : convertToIdea.isPending
+      ? CONVERTED_TYPE.IDEA
+      : null;
 
   return (
     <div className="space-y-6">
@@ -65,7 +84,7 @@ export function QuickCapture() {
           Quick Capture
         </h1>
         <p className="text-sm text-text-muted">
-          Get it out of your head now — organize it into tasks later.
+          Get it out of your head now — organize it into tasks or ideas later.
         </p>
       </div>
 
@@ -91,9 +110,11 @@ export function QuickCapture() {
           </div>
           <CaptureList
             captures={captures}
-            onConvert={handleConvert}
+            onConvertToTask={handleConvertToTask}
+            onConvertToIdea={handleConvertToIdea}
             onRemove={handleRemove}
             convertingId={convertingId}
+            convertingKind={convertingKind}
             removePending={removeCapture.isPending}
           />
         </div>

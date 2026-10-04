@@ -76,6 +76,14 @@ export const CONCEPT_STATUS = Object.freeze({
   REVIEW: "review",
 });
 
+// Idea status
+export const IDEA_STATUS = Object.freeze({
+  NEW: "new",
+  EXPLORING: "exploring",
+  PARKED: "parked",
+  DONE: "done",
+});
+
 // Types a quick capture can be organized into
 export const CONVERTED_TYPE = Object.freeze({
   TASK: "task",

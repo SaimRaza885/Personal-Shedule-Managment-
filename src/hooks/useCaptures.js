@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  convertCaptureToIdea,
   convertCaptureToTask,
   createCapture,
   deleteCapture,
@@ -28,6 +29,17 @@ export function useConvertCaptureToTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["captures"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useConvertCaptureToIdea() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: convertCaptureToIdea,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["captures"] });
+      queryClient.invalidateQueries({ queryKey: ["ideas"] });
     },
   });
 }

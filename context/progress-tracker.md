@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 4 — Capture & Ideas
-**Last completed:** 14 Quick Capture
-**Next:** 15 Ideas Vault
+**Phase:** Phase 5 — Learning
+**Last completed:** 15 Ideas Vault
+**Next:** 16 What I Learned
 
 ---
 
@@ -42,7 +42,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 4 — Capture & Ideas
 
 * [x] 14 Quick Capture
-* [ ] 15 Ideas Vault
+* [x] 15 Ideas Vault
 
 ### Phase 5 — Learning
 
@@ -142,4 +142,7 @@ Update this file after every completed feature. Any AI agent reading this should
 * **13 — Overload banner + AvailableTimeDialog:** `OverloadBanner` (role="alert", warning token family `border-warning-light`/`bg-warning-lightest`/`text-warning-foreground`, `CircleAlert` icon) sits between the Top 3 / Progress grid and the Schedule card on Today; its "Available time" button opens `AvailableTimeDialog` (same RHF+zod conventions as `ScheduleBlockDialog`). Hours input validated in two layers: native `min=0.25 max=24 step=0.25` + zod (required message on empty, range message on out-of-range). Verified: 480/480 no banner → 300 min banner "Planned work: 8h · Available time: 5h" → dialog save 5h→10h toast + banner clears → completing a 150-min block drops remaining to 5h 30m (completed work is excluded).
 * **14 — Quick capture data layer:** `services/quick-capture.service.js` owns the `quick_captures` SQL (list/create/convert-to-task/delete); `hooks/useCaptures.js` owns key `["captures"]` + one mutation per operation. `CONVERTED_TYPE` (`task`/`idea`) added to `constants.js` — the `idea` value is already reserved for feature 15. `listCaptures()` sorts in JS: unconverted first, converted sink below (stable, so the inbox reading order stays newest-first within each group). Convert guards: "That capture no longer exists." (missing row) and "This capture has already been organized." (double convert). Delete uses the standard `rowsAffected === 0` guard.
 * **14 — One-click convert rule:** `convertCaptureToTask` creates the task + marks the capture `converted_type/converted_id` **inside one transaction** (raw BEGIN/COMMIT/ROLLBACK, same pattern as `schedule.service`). Defaults are deliberate — priority medium, status not_started, planned 30 min — and there is no dialog: capture is meant to be frictionless, organization happens later on /tasks. Long thoughts map cleanly: content > 120 chars (`MAX_TASK_TITLE`) → title truncated to 120 chars ending "…" and the **full content becomes the task description**, so nothing is lost. Deleting a converted capture never touches the created task.
-* **14 — Capture UI:** `/quick-capture` = `CaptureForm` (single textarea, zod: non-empty trimmed, submit on Ctrl/Cmd+Enter, refocuses after save) above the "Inbox" list of `CaptureList` rows. Converted rows stay visible (dimmed + "Converted to task" badge) so nothing silently vanishes; they only offer delete. Delete uses the inline confirm pattern (`confirmingId` state in the list). Sidebar gained a 15th entry "Capture" (Inbox icon) after Focus. "Convert to idea" is deliberately deferred to feature 15 when the ideas data layer exists.
+* **14 — Capture UI:** `/quick-capture` = `CaptureForm` (single textarea, zod: non-empty trimmed, submit on Ctrl/Cmd+Enter, refocuses after save) above the "Inbox" list of `CaptureList` rows. Converted rows stay visible (dimmed + "Converted to task" badge) so nothing silently vanishes; they only offer delete. Delete uses the inline confirm pattern (`confirmingId` state in the list). Sidebar gained a 15th entry "Capture" (Inbox icon) after Focus. "Convert to idea" was added in feature 15.
+* **15 — Ideas data layer:** `services/idea.service.js` owns the `ideas` SQL (list/create/update/delete); `hooks/useIdeas.js` owns key `["ideas"]` + one mutation per operation. The `ideas` table has **no status CHECK**, so the workflow enum lives in code: `IDEA_STATUS` (`new`/`exploring`/`parked`/`done`) in `constants.js`, and `listIdeas()` sorts in JS by `STATUS_ORDER` rank (new first) then `created_at DESC` — no enum literals in SQL. Update/delete use the standard `rowsAffected === 0` guard. Ideas are deliberately separate from tasks — the vault is for thinking, not for doing.
+* **15 — Dual capture conversion:** `convertCaptureToIdea` in `quick-capture.service.js` mirrors `convertCaptureToTask` — same guards ("That capture no longer exists." / "This capture has already been organized."), same shared `MAX_TITLE` (120) truncation rule (title truncated ending "…", full content becomes the idea description), same BEGIN/COMMIT/ROLLBACK transaction (idea insert + capture converted_type/converted_id update). `CONVERTED_TYPE.IDEA` from feature 14 is now the live value. Deleting a converted capture never touches the idea (verified).
+* **15 — Ideas UI:** `/ideas` = header + "New idea" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `IdeaCard`s (title, description, status badge via `ideaStatus.js`, "Added {formatTimestamp}", edit/trash with inline confirm). `IdeaFormDialog` (RHF+zod: title trimmed required, description ≤500, status select) serves both add and edit with primitive-dep reset. `CaptureList` now renders **two** convert buttons per unconverted row ("Convert to task" + "Convert to idea"), both disabled while any conversion or delete is pending; `QuickCapture` tracks `convertingKind` so only the clicked button shows its spinner. The sidebar's existing "Ideas" (Lightbulb) entry is now live — `/ideas` swapped from Placeholder to the real page.

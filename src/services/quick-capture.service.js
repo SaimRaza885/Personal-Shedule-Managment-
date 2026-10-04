@@ -5,16 +5,17 @@ import {
   TASK_PRIORITY,
   TASK_STATUS,
 } from "@/lib/constants";
+import { createIdea } from "@/services/idea.service";
 import { createTask } from "@/services/task.service";
 
 /**
  * Read + write operations for quick captures. A capture is a fast,
- * free-form thought; organizing it (convert to a task, or delete) is a
- * separate, deliberate step. Converted rows stay for history and the
- * created target is never modified from here.
+ * free-form thought; organizing it (convert to a task or an idea, or
+ * delete) is a separate, deliberate step. Converted rows stay for history
+ * and the created target is never modified from here.
  */
 
-const MAX_TASK_TITLE = 120;
+const MAX_TITLE = 120;
 
 /**
  * @typedef {Object} Capture
@@ -95,9 +96,9 @@ export async function convertCaptureToTask({ id }) {
   }
 
   const content = capture.content.trim();
-  const truncated = content.length > MAX_TASK_TITLE;
+  const truncated = content.length > MAX_TITLE;
   const title = truncated
-    ? `${content.slice(0, MAX_TASK_TITLE - 1).trimEnd()}…`
+    ? `${content.slice(0, MAX_TITLE - 1).trimEnd()}…`
     : content;
 
   try {
@@ -120,6 +121,47 @@ export async function convertCaptureToTask({ id }) {
     console.error("[quick-capture.service:convertCaptureToTask]", error);
     throw new Error(
       "Could not convert the capture into a task. Please try again.",
+    );
+  }
+}
+
+/**
+ * Turn a capture into an idea in the vault. Same rule as the task
+ * conversion: long content becomes the idea description with a shortened
+ * title, and the capture is marked converted instead of being removed.
+ * @param {{ id: string }} input
+ * @returns {Promise<string>} id of the created idea
+ */
+export async function convertCaptureToIdea({ id }) {
+  const capture = await queryOne("SELECT * FROM quick_captures WHERE id = ?", [id]);
+  if (!capture) throw new Error("That capture no longer exists.");
+  if (capture.converted_type) {
+    throw new Error("This capture has already been organized.");
+  }
+
+  const content = capture.content.trim();
+  const truncated = content.length > MAX_TITLE;
+  const title = truncated
+    ? `${content.slice(0, MAX_TITLE - 1).trimEnd()}…`
+    : content;
+
+  try {
+    await execute("BEGIN");
+    const ideaId = await createIdea({
+      title,
+      description: truncated ? content : "",
+    });
+    await execute(
+      "UPDATE quick_captures SET converted_type = ?, converted_id = ? WHERE id = ?",
+      [CONVERTED_TYPE.IDEA, ideaId, id],
+    );
+    await execute("COMMIT");
+    return ideaId;
+  } catch (error) {
+    await execute("ROLLBACK").catch(() => {});
+    console.error("[quick-capture.service:convertCaptureToIdea]", error);
+    throw new Error(
+      "Could not convert the capture into an idea. Please try again.",
     );
   }
 }

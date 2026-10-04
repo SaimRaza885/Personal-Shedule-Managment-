@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inbox, ListPlus, Loader2, Trash2 } from "lucide-react";
+import { Inbox, Lightbulb, ListPlus, Loader2, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { Button } from "@/components/ui/button";
 import { CONVERTED_TYPE } from "@/lib/constants";
@@ -11,15 +11,18 @@ const CONVERTED_LABELS = {
 };
 
 /**
- * @param {{ captures: object[], onConvert: (capture: object) => void,
+ * @param {{ captures: object[], onConvertToTask: (capture: object) => void,
+ *   onConvertToIdea: (capture: object) => void,
  *   onRemove: (capture: object) => void, convertingId?: string|null,
- *   removePending?: boolean }} props
+ *   convertingKind?: string|null, removePending?: boolean }} props
  */
 export function CaptureList({
   captures,
-  onConvert,
+  onConvertToTask,
+  onConvertToIdea,
   onRemove,
   convertingId = null,
+  convertingKind = null,
   removePending = false,
 }) {
   const [confirmingId, setConfirmingId] = useState(null);
@@ -96,19 +99,34 @@ export function CaptureList({
                 ) : (
                   <>
                     {!converted && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onConvert(capture)}
-                        disabled={converting || removePending}
-                      >
-                        {converting ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <ListPlus className="size-4" />
-                        )}
-                        Convert to task
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onConvertToTask(capture)}
+                          disabled={converting || removePending}
+                        >
+                          {converting && convertingKind === CONVERTED_TYPE.TASK ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <ListPlus className="size-4" />
+                          )}
+                          Convert to task
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onConvertToIdea(capture)}
+                          disabled={converting || removePending}
+                        >
+                          {converting && convertingKind === CONVERTED_TYPE.IDEA ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Lightbulb className="size-4" />
+                          )}
+                          Convert to idea
+                        </Button>
+                      </>
                     )}
                     <Button
                       variant="ghost"
