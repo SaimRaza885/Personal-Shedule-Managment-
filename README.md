@@ -88,6 +88,29 @@ Read in order before implementation:
 
 ---
 
+## 🎓 Required Skills
+
+Install these Context7 skills for AI agent support:
+
+```
+tauri
+react
+typescript
+sqlite
+react-router
+@tanstack/react-query
+zustand
+react-hook-form
+zod
+shadcn/ui
+tailwindcss
+lucide-react
+date-fns
+recharts
+```
+
+---
+
 ## 📄 License
 
 *[To be specified]*
