@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 5 — Learning
-**Last completed:** 18 Watch Later
-**Next:** 19 End-of-Day Review
+**Phase:** Phase 6 — Reflection
+**Last completed:** 19 End-of-Day Review
+**Next:** 20 Digital Diary
 
 ---
 
@@ -52,7 +52,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 6 — Reflection
 
-* [ ] 19 End-of-Day Review
+* [x] 19 End-of-Day Review
 * [ ] 20 Digital Diary
 * [ ] 21 Weekly Review
 
@@ -153,3 +153,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **18 — Watch Later data layer:** `services/watch-later.service.js` owns the `watch_later` SQL (list/create/update/`setWatchItemStatus`/delete); `hooks/useWatchLater.js` owns key `["watch-later"]` + one mutation per operation. The table stores `title`, optional `url` (`NOT NULL DEFAULT ''`), nullable `scheduled_date` (indexed by `idx_watch_later_scheduled_date`) and a `status` (`pending`/`watched` — `WATCH_STATUS` in `constants.js`). `listWatchLater()` sorts in JS: status rank pending → watched, then scheduled date **ASC** (soonest first) with a `"9999-99-99"` sentinel so unscheduled items sink to the end of the pending group, newest-first within equal keys. The card's watched/unwatched toggle uses the dedicated single-transition `setWatchItemStatus`, mirroring the `setTaskStatus` pattern. Update/delete use the standard `rowsAffected === 0` guard.
 * **18 — Watch Later UI:** `/watch-later` = header ("Watch Later", subtitle "Links worth your time — scheduled for a real moment, not an endless backlog.") + "New link" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `WatchLaterCard`s (truncated title + status badge, URL anchor with `target="_blank" rel="noreferrer"` shown only when a URL exists, "Scheduled {formatDate}" chip when dated + "Added {formatTimestamp}", and a Check/Undo2 toggle + edit/trash with the inline confirm "Remove this item?"). `WatchLaterFormDialog` (RHF+zod: title required, url optional validated via `URL.canParse` → "Enter a valid link (e.g. https://…)", scheduledDate optional `Input type="date"`, status Select; `sm:max-w-[440px]`) serves add and edit with the primitive-dep reset. Verified: scheduled pending item ranked above undated pending item, watched toggle re-sorting below pending, zod URL guard keeping the dialog open, edit prefill (title/url/date/status) + status change re-sorting live, delete leaving exactly one row in the DB.
 * **18 — Deferred by design:** the Phase 5 decision line says saved links "can become actionable tasks" — the `watch_later` schema has no task link column, so conversion stays manual for now. Opening links in the system browser (tauri-plugin-opener) is external-link handling, deferred to the hardening phase (26/27). Neither invents schema nor plugins prematurely.
+* **19 — Reviews data layer:** `services/review.service.js` owns the `daily_reviews` SQL (get / getStats / save); `hooks/useReviews.js` owns keys `["reviews","daily",date]` + `["reviews","daily-stats",date]` and `useSaveDailyReview` invalidating `["reviews"]`. `getDailyReviewStats(date)` composes `today.service.getTodaySchedule(date)` with a focus-sessions read and derives the numbers in JS (`summarizeDailyStats`): planned = scheduled blocks; completed = `completed`; partial = `in_progress` + `paused`; missed = `not_started` — cancelled is deliberately excluded (called off, not missed). Focus minutes sum only sessions whose `started_at` falls on the **local** calendar day (UTC → local conversion via date-fns `format`) — verified by seeding one session today + one yesterday and getting exactly 50 min. Save is a **service-level upsert** (SELECT id by date → UPDATE or INSERT): one review per day. No new migration was needed — and adding statements to migration id 1 would never run on existing DBs anyway, because `_migrations` skips applied ids. Stats are stored as a **snapshot** at save time; the screen always displays live numbers.
+* **19 — End-of-Day Review UI:** `/reviews` swapped from Placeholder; page = header ("Reviews", subtitle "Close the loop — compare the plan with what actually happened, then steer tomorrow.") + the self-contained `EndOfDayReview` section (stats tiles Planned/Completed/Partial/Missed on `bg-surface-secondary`, focus-time line via `formatMinutes`, RHF+zod notes form ≤2000 chars, "Last saved {formatTimestamp}" once a review exists, and a "Continue your evening" row linking to /diary, /learning, /). Query ownership lives inside the section, so feature 21 can stack the Weekly Review section on the same page without a combined loading gate. Verified: tiles matched the seeded day (4 planned / 1 completed / 1 partial / 1 missed), save → "Review saved" toast + DB row snapshot exact, task status change → tiles refreshed (2 completed, 0 missed) and re-save → "Review updated" with still exactly 1 row, notes prefill after reload, cross-link navigation, console clean.
