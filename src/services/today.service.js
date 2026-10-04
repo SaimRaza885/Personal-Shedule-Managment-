@@ -1,6 +1,12 @@
 import { query } from "@/lib/database";
 import { TASK_STATUS } from "@/lib/constants";
 
+/**
+ * A scheduled block joined with its task, as consumed by the Today screen.
+ * @typedef {{ id: string, taskId: string, title: string, startTime: string, endTime: string, plannedMinutes: number, status: string, stepsTotal: number, stepsRemaining: number }} ScheduleItem
+ */
+
+/** @param {string} date @returns {Promise<ScheduleItem[]>} */
 export async function getTodaySchedule(date) {
   return query(
     `SELECT
@@ -21,6 +27,7 @@ export async function getTodaySchedule(date) {
   );
 }
 
+/** @param {string} date @returns {Promise<Array<{ id: string, taskId: string, position: number, title: string, status: string }>>} */
 export async function getTopThree(date) {
   return query(
     `SELECT

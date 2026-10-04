@@ -6,7 +6,7 @@ import {
   getTodaySchedule,
   getTopThree,
   summarizeProgress,
-} from "@/services/todayService";
+} from "@/services/today.service";
 
 export function useTodayData() {
   const date = format(new Date(), DATE_FORMATS.ISO);
