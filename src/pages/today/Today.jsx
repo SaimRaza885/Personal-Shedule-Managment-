@@ -115,6 +115,8 @@ export function Today() {
           title: values.title,
           startTime: values.startTime,
           endTime: values.endTime,
+          priority: values.priority,
+          energyLevel: values.energyLevel,
         });
         toast.success("Task added to your schedule");
       } else {

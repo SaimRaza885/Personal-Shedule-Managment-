@@ -1,5 +1,5 @@
 import { execute } from "@/lib/database";
-import { TASK_STATUS } from "@/lib/constants";
+import { ENERGY_LEVEL, TASK_PRIORITY, TASK_STATUS } from "@/lib/constants";
 
 /**
  * Write operations for daily schedule blocks. Reads live in
@@ -20,17 +20,39 @@ function assertValidTimes(startTime, endTime) {
   }
 }
 
+function assertValidPriority(priority) {
+  if (!Object.values(TASK_PRIORITY).includes(priority)) {
+    throw new Error("Priority must be low, medium, or high");
+  }
+}
+
+function assertValidEnergy(energyLevel) {
+  if (energyLevel !== null && !Object.values(ENERGY_LEVEL).includes(energyLevel)) {
+    throw new Error("Energy level must be high, medium, or low");
+  }
+}
+
 /**
  * Create a task and place it in a fixed time block on the given date.
  * Task and schedule row are written together so a block can never point
  * at a missing task. planned_minutes always matches the block duration.
- * @param {{ date: string, title: string, startTime: string, endTime: string }} input
+ * @param {{ date: string, title: string, startTime: string, endTime: string,
+ *   priority?: string, energyLevel?: string | null }} input
  * @returns {Promise<string>} id of the created daily_schedules row
  */
-export async function addScheduleBlock({ date, title, startTime, endTime }) {
+export async function addScheduleBlock({
+  date,
+  title,
+  startTime,
+  endTime,
+  priority = TASK_PRIORITY.MEDIUM,
+  energyLevel = null,
+}) {
   const trimmedTitle = title.trim();
   if (!trimmedTitle) throw new Error("Task title is required");
   assertValidTimes(startTime, endTime);
+  assertValidPriority(priority);
+  assertValidEnergy(energyLevel);
 
   const taskId = crypto.randomUUID();
   const scheduleId = crypto.randomUUID();
@@ -40,9 +62,18 @@ export async function addScheduleBlock({ date, title, startTime, endTime }) {
   try {
     await execute("BEGIN");
     await execute(
-      `INSERT INTO tasks (id, title, status, planned_minutes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [taskId, trimmedTitle, TASK_STATUS.NOT_STARTED, plannedMinutes, now, now],
+      `INSERT INTO tasks (id, title, priority, energy_level, status, planned_minutes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        taskId,
+        trimmedTitle,
+        priority,
+        energyLevel,
+        TASK_STATUS.NOT_STARTED,
+        plannedMinutes,
+        now,
+        now,
+      ],
     );
     await execute(
       `INSERT INTO daily_schedules

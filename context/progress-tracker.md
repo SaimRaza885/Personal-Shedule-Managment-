@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 10 — Wiring, Hardening & Release
-**Last completed:** 25 Backup / Restore / Export
-**Next:** 26 Wire Today & Planning Together
+**Last completed:** 26 Wire Today & Planning Together
+**Next:** 27 SQLite & App Hardening
 
 ---
 
@@ -71,7 +71,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 10 — Wiring, Hardening & Release
 
-* [ ] 26 Wire Today & Planning Together
+* [x] 26 Wire Today & Planning Together
 * [ ] 27 SQLite & App Hardening
 * [ ] 28 Windows Desktop QA & Production Build
 
@@ -171,3 +171,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **25 — Backup service (`services/backup.service.js`):** the snapshot is a JSON document `{ app: "personal-schedule-management", version: 1, exportedAt, tables }` covering **all 20 app tables** (`_migrations` excluded by design). `TABLE_COLUMNS` declares the explicit column list per table — a new migration must extend this map or its columns silently miss backups. `buildSnapshot()` reads every table with `SELECT *` and returns `{content, fileName: "schedule-backup-yyyy-MM-dd.json", byteSize}`. `parseSnapshot()` validates app marker, version, and that every table value is an array before anything is touched. `restoreSnapshot()` runs one transaction: DELETE all tables in reverse insert-order, INSERT in parents-first order, COMMIT — FK-safe in both engines. `recordBackup()` is best-effort (history row of path/size/time; a logging failure never fails an export) and `listRecentBackups(limit)` powers the Settings "Last backup" line.
 * **25 — File transfer (`lib/fileTransfer.js`):** one module hides the Tauri/browser split for saving and picking files. Tauri (`plugin-dialog` + `plugin-fs`): native Save/Open dialog → `writeTextFile`/`readTextFile`; cancel returns `{saved:false}` / `{picked:false}` — cancel is **not** an error. Browser fallback: Blob + anchor download and a hidden `<input type="file">` kept offscreen (not `display:none`) so it stays clickable/uploadable in dev verification. Plugins, capabilities (`fs:default`, `dialog:default`) and Rust `init()` were already in place from feature 03 — **no Tauri config changes were needed**.
 * **25 — Hooks and Settings UI:** `hooks/useBackup.js` owns key `["backups"]` (history) plus export and restore mutations. **Restore invalidates ALL query keys** (`queryClient.invalidateQueries()` with no filters) because it can replace every table at once. Settings gained a "Backup & restore" section card (renders independently of the notifications form state): last-backup line or "No backups yet" empty state, Export button, and a Restore button opening a destructive confirm dialog ("This replaces everything currently in the app…"). Verified in-browser end-to-end: export → toast + history row (1.1 KB); invalid file → friendly "doesn't look like a Schedule backup" and DB untouched; valid file → "Backup restored" and goal/settings/backups rows all reverted (mutation round-trip).
+* **26 — Schedule creation carries priority & energy:** `schedule.service.addScheduleBlock` now accepts `priority` (validated against `TASK_PRIORITY`, defaults to `medium`) and `energyLevel` (validated against `ENERGY_LEVEL` or null → NULL stored) as guards **before** the try block, same style as `assertValidTimes`. The tasks INSERT includes both columns, so a block created from Today is no longer energy-blind. `updateScheduleBlock` and `removeScheduleBlock` are unchanged — edit stays times-only (feature-05 design), and no migration was needed (columns existed since migration id 1).
+* **26 — Dialog & Today wiring:** `ScheduleBlockDialog` add mode gained Priority + Energy selects mirroring `TaskFormDialog` exactly (`NO_VALUE = "none"`, `z.enum(Object.values(TASK_PRIORITY))`, `ENERGY_OPTIONS` via `energyLabel`, selects in `grid grid-cols-2 gap-4`, "No preference" default) — the dialog converts `"none"` → null before `onSubmit`, and `Today.handleDialogSubmit` passes both fields straight into `addBlock`. Verified in-browser end-to-end: High + Low energy block → DB reads `priority='high'`, `energy_level='low'`; untouched defaults → `'medium'` / `NULL`; edit dialog still shows times only (0 comboboxes); `today.service.findLighterOptions` ranks the low-energy block first at 09:00 (rank 0 vs unknown rank 2) and correctly excludes the ended block at 15:30; console clean. This closes the feature-12 note that "the UI could not yet create a scheduled task with an energy level".

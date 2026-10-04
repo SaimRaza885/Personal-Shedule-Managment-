@@ -14,6 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -21,6 +28,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { priorityLabel, energyLabel } from "@/components/tasks/taskMeta";
+import { ENERGY_LEVEL, TASK_PRIORITY } from "@/lib/constants";
+
+// Radix Select rejects empty-string values, so "none" marks "not set".
+const NO_VALUE = "none";
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -38,11 +50,23 @@ const afterStart = (schema) =>
 const addSchema = afterStart(
   z.object({
     title: z.string().trim().min(1, "Task title is required"),
+    priority: z.enum(Object.values(TASK_PRIORITY)),
+    energyLevel: z.string(),
     ...timeFields,
   }),
 );
 
 const editSchema = afterStart(z.object({ ...timeFields }));
+
+const PRIORITY_OPTIONS = Object.values(TASK_PRIORITY).map((value) => ({
+  value,
+  label: priorityLabel(value),
+}));
+
+const ENERGY_OPTIONS = Object.values(ENERGY_LEVEL).map((value) => ({
+  value,
+  label: energyLabel(value),
+}));
 
 /**
  * @param {{ open: boolean, onOpenChange: (open: boolean) => void,
@@ -63,14 +87,26 @@ export function ScheduleBlockDialog({
   const modeEnd = isAdd ? "" : mode.endTime;
   const form = useForm({
     resolver: zodResolver(isAdd ? addSchema : editSchema),
-    defaultValues: { title: "", startTime: "", endTime: "" },
+    defaultValues: {
+      title: "",
+      priority: TASK_PRIORITY.MEDIUM,
+      energyLevel: NO_VALUE,
+      startTime: "",
+      endTime: "",
+    },
   });
 
   // Primitive deps: parent re-renders recreate the mode object, which must
   // not wipe values the user is currently typing.
   useEffect(() => {
     if (open) {
-      form.reset({ title: modeTitle, startTime: modeStart, endTime: modeEnd });
+      form.reset({
+        title: modeTitle,
+        priority: TASK_PRIORITY.MEDIUM,
+        energyLevel: NO_VALUE,
+        startTime: modeStart,
+        endTime: modeEnd,
+      });
     }
   }, [open, modeTitle, modeStart, modeEnd, form]);
 
@@ -90,7 +126,14 @@ export function ScheduleBlockDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(async (values) => {
-              await onSubmit(values);
+              await onSubmit({
+                title: values.title,
+                priority: values.priority,
+                energyLevel:
+                  values.energyLevel === NO_VALUE ? null : values.energyLevel,
+                startTime: values.startTime,
+                endTime: values.endTime,
+              });
             })}
             className="space-y-4"
           >
@@ -137,6 +180,59 @@ export function ScheduleBlockDialog({
                 )}
               />
             </div>
+            {isAdd && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PRIORITY_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="energyLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Energy (optional)</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NO_VALUE}>No preference</SelectItem>
+                          {ENERGY_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"
