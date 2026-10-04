@@ -9,6 +9,7 @@ import { Tasks } from "@/pages/work/Tasks";
 import { Focus } from "@/pages/focus/Focus";
 import { QuickCapture } from "@/pages/captures/QuickCapture";
 import { Ideas } from "@/pages/ideas/Ideas";
+import { Learning } from "@/pages/learning/Learning";
 import { Placeholder } from "@/pages/Placeholder";
 
 export const router = createBrowserRouter([
@@ -23,7 +24,7 @@ export const router = createBrowserRouter([
       { path: "/projects/:id", element: <ProjectDetails /> },
       { path: "/tasks", element: <Tasks /> },
       { path: "/focus", element: <Focus /> },
-      { path: "/learning", element: <Placeholder title="What I Learned" /> },
+      { path: "/learning", element: <Learning /> },
       { path: "/concepts", element: <Placeholder title="Tech Concepts" /> },
       { path: "/watch-later", element: <Placeholder title="Watch Later" /> },
       { path: "/ideas", element: <Ideas /> },

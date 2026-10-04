@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 5 — Learning
-**Last completed:** 15 Ideas Vault
-**Next:** 16 What I Learned
+**Last completed:** 16 What I Learned
+**Next:** 17 Tech Concepts I Must Know
 
 ---
 
@@ -46,7 +46,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 5 — Learning
 
-* [ ] 16 What I Learned
+* [x] 16 What I Learned
 * [ ] 17 Tech Concepts I Must Know
 * [ ] 18 Watch Later
 
@@ -146,3 +146,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **15 — Ideas data layer:** `services/idea.service.js` owns the `ideas` SQL (list/create/update/delete); `hooks/useIdeas.js` owns key `["ideas"]` + one mutation per operation. The `ideas` table has **no status CHECK**, so the workflow enum lives in code: `IDEA_STATUS` (`new`/`exploring`/`parked`/`done`) in `constants.js`, and `listIdeas()` sorts in JS by `STATUS_ORDER` rank (new first) then `created_at DESC` — no enum literals in SQL. Update/delete use the standard `rowsAffected === 0` guard. Ideas are deliberately separate from tasks — the vault is for thinking, not for doing.
 * **15 — Dual capture conversion:** `convertCaptureToIdea` in `quick-capture.service.js` mirrors `convertCaptureToTask` — same guards ("That capture no longer exists." / "This capture has already been organized."), same shared `MAX_TITLE` (120) truncation rule (title truncated ending "…", full content becomes the idea description), same BEGIN/COMMIT/ROLLBACK transaction (idea insert + capture converted_type/converted_id update). `CONVERTED_TYPE.IDEA` from feature 14 is now the live value. Deleting a converted capture never touches the idea (verified).
 * **15 — Ideas UI:** `/ideas` = header + "New idea" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `IdeaCard`s (title, description, status badge via `ideaStatus.js`, "Added {formatTimestamp}", edit/trash with inline confirm). `IdeaFormDialog` (RHF+zod: title trimmed required, description ≤500, status select) serves both add and edit with primitive-dep reset. `CaptureList` now renders **two** convert buttons per unconverted row ("Convert to task" + "Convert to idea"), both disabled while any conversion or delete is pending; `QuickCapture` tracks `convertingKind` so only the clicked button shows its spinner. The sidebar's existing "Ideas" (Lightbulb) entry is now live — `/ideas` swapped from Placeholder to the real page.
+* **16 — Learning data layer:** `services/learning.service.js` owns the `learning_entries` SQL (list/create/update/delete); `hooks/useLearning.js` owns key `["learning"]` + one mutation per operation. The entry date is **required** — it defaults to today in the dialog and is validated with `.min(1)` plus a `yyyy-MM-dd` regex refine (two distinct zod messages). `title` trimmed required, `content` optional ≤2000 chars. `listLearningEntries()` orders SQL-side by `date DESC, created_at DESC` (date is the meaningful anchor; no enum rank exists so no JS sort). Update/delete use the standard `rowsAffected === 0` guard. Notes are deliberately self-directed — nothing quizzes, schedules, or resurfaces them (the decision line in Decisions Made).
+* **16 — Learning UI:** `/learning` = header ("What I Learned") + "New note" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `LearningCard`s (truncated title + `formatDate` date chip, pre-wrap content, edit/trash with the inline confirm pattern). `LearningFormDialog` (RHF+zod: title, date `Input type="date"` labeled "Learned on", content Textarea rows 5; `sm:max-w-[480px]`) serves add and edit with the primitive-dep reset; edit prefill passes flattened `{ title, date, content }`. Verified: date-DESC ordering across two notes, zod guard on empty submit, edit re-sorting the list when its date changed, delete leaving the DB with exactly the expected row.
