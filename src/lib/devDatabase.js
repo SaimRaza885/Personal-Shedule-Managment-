@@ -25,6 +25,10 @@ function loadPersistedBytes() {
 
 function persist(db) {
   const bytes = db.export();
+  // sql.js db.export() closes and reopens the underlying connection, which
+  // resets connection-level pragmas — re-enable FK enforcement after every
+  // export or CASCADE / SET NULL silently stop working after the first write.
+  db.run("PRAGMA foreign_keys = ON;");
   let binary = "";
   for (let i = 0; i < bytes.length; i += 1) {
     binary += String.fromCharCode(bytes[i]);
@@ -36,6 +40,11 @@ async function createEngine() {
   const SQL = await initSqlJs({ locateFile: () => sqlWasmUrl });
   const bytes = loadPersistedBytes();
   const db = bytes ? new SQL.Database(bytes) : new SQL.Database();
+
+  // sql.js defaults foreign_keys OFF; tauri-plugin-sql (sqlx) defaults it ON.
+  // Enable it here so ON DELETE CASCADE / SET NULL behave identically in both
+  // engines (e.g. deleting a goal cascades to its milestones in dev too).
+  db.run("PRAGMA foreign_keys = ON;");
 
   // db.export() (used by persist) cannot run mid-transaction: it silently
   // ends the open transaction, so COMMIT then fails. Track transaction

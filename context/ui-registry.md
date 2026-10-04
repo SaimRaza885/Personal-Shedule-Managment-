@@ -89,11 +89,40 @@ shadcn `Dialog` + `DialogContent sm:max-w-[440px]`. Title "Add task to schedule"
 `schedule.service.js` owns add/edit/remove SQL (see progress-tracker 05 notes); `useSchedule.js` exposes one `useMutation` hook per operation, each invalidating TanStack Query key `["today"]` on success. Components never touch SQL directly.
 
 **Time formatting** — `src/lib/datetime.js`
-Stored times are `HH:mm` (24h) — display only via `formatTime(hhmm)` → `h:mm a` (date-fns `DATE_FORMATS.TIME`). Never format raw `HH:mm` inline in components.
+Stored times are `HH:mm` (24h) — display only via `formatTime(hhmm)` → `h:mm a` (date-fns `DATE_FORMATS.TIME`). Stored dates are ISO `yyyy-MM-dd` — display via `formatDate(iso)` → `MMM d, yyyy` (`DATE_FORMATS.DAY`, feature 07). Never format raw `HH:mm` or ISO strings inline in components.
+
+### Goals section (feature 07)
+
+**Goals page** — `src/pages/goals/Goals.jsx`
+Header row always visible: `h1 text-xl font-semibold text-text-primary` "Goals" + `text-sm text-text-muted` subtitle + right `Button size="sm"` "New goal". Body: page-level `LoadingState` / `ErrorState` (retry = `refetch`) / `EmptyState` (Target icon) when zero goals; otherwise `grid grid-cols-1 gap-6 xl:grid-cols-2` of `GoalCard`s. Owns `dialog` state and goal mutations; success → `toast.success` ("Goal created/updated/removed"), failures → `toast.error` with friendly message.
+
+**GoalCard** — `src/components/goals/GoalCard.jsx`
+Section card `rounded-lg border border-border bg-surface p-6`. Title `text-base font-semibold text-text-primary` + `line-clamp-2 text-sm text-text-muted` description. Meta chips `flex flex-wrap items-center gap-2`: year chip `rounded-full bg-surface-tertiary px-2 py-0.5 text-xs font-medium text-text-secondary` (only when `goal.year`), status badge via `goalStatus.js`. Progress row `mt-4` (only when milestones exist): `flex justify-between text-xs text-text-muted` "N of M milestones complete" + "N%", track `mt-1.5 h-1 rounded-full bg-border-light` fill `bg-accent` inline width. Footer `mt-4 flex items-center justify-between`: two-step-confirm edit/trash icons (`variant="ghost" size="icon-xs"`, icons `size-3.5`, aria-labels "Edit {title}" / "Remove {title}", confirm text "Remove goal and its milestones?" + Cancel/Remove `size="xs"`) + `<Button variant="outline" size="sm" asChild><Link to={"/goals/" + id}>View milestones</Link></Button>`. No milestones → `text-xs text-text-muted` "No milestones yet".
+
+**GoalFormDialog** — `src/components/goals/GoalFormDialog.jsx`
+Same dialog conventions as `ScheduleBlockDialog`. Title "New goal" / "Edit goal". Fields: Title `Input`; Description (optional) `Textarea rows={3}`; `grid grid-cols-2 gap-4` with Year (optional) `Input type="number" min 2000 max 2100` and Status shadcn `Select` fed by `goalStatusLabel`. zod: title trimmed required; description trimmed `max 500`; year `""` or 4-digit string (converted to `null`/`Number` on submit); status enum. Footer submit "Create goal" / "Save changes".
+
+**MilestoneList** — `src/components/goals/MilestoneList.jsx`
+"Milestones" section card. Header `mb-4 flex items-center justify-between gap-4`: title + right cluster `text-xs text-text-muted` "N of M complete" + `Button variant="outline" size="sm"` "Add milestone" (`Plus size-4`). Rows `ul.divide-y divide-border-light`, row `flex items-center gap-3 py-3`: title `min-w-0 flex-1 truncate text-sm font-medium text-text-primary` (completed → `text-text-muted line-through`) + optional `text-xs text-text-muted` description; period chip `bg-surface-tertiary text-text-secondary` ("Year"/"Month"/"Week" via `periodLabel`); target date `text-xs text-text-muted` via `formatDate` when present; milestone status badge; edit/trash two-step confirm with aria-labels ("Edit {title}" / "Remove {title}", confirm "Remove this milestone?"). Empty: `EmptyState` (Flag) "No milestones yet" + Add action.
+
+**MilestoneFormDialog** — `src/components/goals/MilestoneFormDialog.jsx`
+Same conventions. Title "New milestone" / "Edit milestone". Fields: Title; Description (optional) `Textarea rows={2}`; `grid grid-cols-2 gap-4` with Period `Select` (Year/Month/Week, default Month on add) and Target date (optional) `Input type="date"`; Status `Select` (Planned/In Progress/Completed, default Planned on add). zod: date `""` or `yyyy-MM-dd` (converted to `null` on submit). Footer submit "Add milestone" / "Save changes".
+
+**Status helpers** — `src/components/goals/goalStatus.js`
+Mirrors `taskStatus.js`. `goalStatusBadgeClass` / `milestoneStatusBadgeClass` share base `rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap`; tones: planned `bg-surface-secondary text-text-secondary`, in_progress `bg-accent-light text-accent`, completed `bg-success-light text-success-foreground`, archived `bg-surface-secondary text-text-muted` (goals only). `periodLabel` maps `year|month|week` → display text. New goal/milestone status UI must reuse these helpers.
+
+**GoalDetails page** — `src/pages/goals/GoalDetails.jsx`
+Route `/goals/:id`. Back link `inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary` with `ChevronLeft size-4` "All goals". Header card (same section card): `h1 text-xl font-semibold` title, description, year chip + goal status badge. Then `MilestoneList`. Loading = combined `isLoading` of goal + milestones; error = combined `ErrorState` (retry refetches both); missing goal → `EmptyState` "Goal not found" + "Back to goals" link (not an error).
+
+**Goals data layer** — `src/services/goal.service.js` + `src/hooks/useGoals.js`
+`goal.service.js` owns goals + milestones SQL (see progress-tracker 07 notes); `useGoals.js` exposes `useGoals`, `useGoal(id)`, `useGoalMilestones(goalId)` and one `useMutation` per operation (goal CRUD invalidates `["goals"]`; milestone mutations invalidate `["goal", goalId, "milestones"]` + `["goals"]`). Components never touch SQL directly.
+
+**Route registration** — `src/routes/index.jsx`
+`/goals` → Goals, `/goals/:id` → GoalDetails (child of the AppShell layout route, so both render inside the sidebar shell).
 
 ### shadcn/ui primitives (generated, JS mode)
 
-Live in `src/components/ui/` (button, input, badge, card, label, select, dialog, table, tabs, dropdown-menu, form). Generated by `npx shadcn@latest add` — do not hand-edit. `cn()` imports rewritten to `@/lib/utils`. shadcn v4 emits `import { Slot } from "radix-ui"` (unified radix package) — keep the `radix-ui` and `cn` npm dependencies for future CLI adds.
+Live in `src/components/ui/` (button, input, textarea, badge, card, label, select, dialog, table, tabs, dropdown-menu, form). Generated by `npx shadcn@latest add` — do not hand-edit. `cn()` imports rewritten to `@/lib/utils`. shadcn v4 emits `import { Slot } from "radix-ui"` (unified radix package) — keep the `radix-ui` and `cn` npm dependencies for future CLI adds.
 
 ### Tokens
 

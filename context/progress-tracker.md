@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 1 — Today & Daily Execution
-**Last completed:** 06 Daily Top 3
-**Next:** 07 Goals & Milestones
+**Phase:** Phase 2 — Goals & Work
+**Last completed:** 07 Goals & Milestones
+**Next:** 08 Projects & Work
 
 ---
 
@@ -28,7 +28,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 2 — Goals & Work
 
-* [ ] 07 Goals & Milestones
+* [x] 07 Goals & Milestones
 * [ ] 08 Projects & Work
 * [ ] 09 Tasks & Task Steps
 
@@ -122,3 +122,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **05 — Schedule mutations:** `services/schedule.service.js` owns add/edit/remove of blocks; `hooks/useSchedule.js` owns the three mutations, each invalidating `["today"]` on success. Add creates task + `daily_schedules` row in one transaction (`planned_minutes` = block duration, synced to `tasks.planned_minutes`). Edit changes times only and re-syncs `planned_minutes`. Remove deletes only the `daily_schedules` row — the task survives as an orphan by design (the schedule is not the task's owner). `daily_schedules` is the schedule source of truth; `tasks.scheduled_date/start_time/end_time` stay NULL.
 * **05 — devDatabase `getRowsModified` fix:** sql.js resets its change counter when a statement is freed, so `db.getRowsModified()` must be read **before** `stmt.free()`. Reading it after made every UPDATE/DELETE report `rowsAffected: 0`, which broke the not-found guards in services. The engine contract now matches tauri-plugin-sql. Also: `db.export()` (used for persistence) silently ends an open transaction, so the dev engine persists only when not inside BEGIN/COMMIT — real tauri-plugin-sql handles this at the pool level, so keep mutations wrapped in transactions regardless of engine.
 * **06 — Top 3 mutations:** `services/top-three.service.js` owns add/remove/move SQL; `hooks/useTopThree.js` owns candidates query (key `["today","top-three-candidates",date]`) + three mutations invalidating `["today"]`. Add assigns `position = COALESCE(MAX(position),0)+1` inside a transaction with guards: task must be scheduled today and actionable, not already in the Top 3, and count `< DEFAULT_VALUES.DAILY_TOP_THREE_MAX`. Remove and move rewrite positions via **delete + re-insert inside the transaction**: `UNIQUE(date, position)` in SQLite is always immediate per-row (DEFERRABLE applies only to FKs), so swapping positions with UPDATE collides on the intermediate state — and with only 3 rows there is no free temp value inside the 1..3 CHECK. Same ids/created_at are preserved on re-insert. Candidates = today's scheduled, actionable, not-yet-picked tasks ordered by start_time.
+* **07 — Goals data layer:** `services/goal.service.js` owns goals + milestones SQL; `hooks/useGoals.js` owns query keys `["goals"]`, `["goal", id]`, `["goal", id, "milestones"]` and one mutation per operation. Milestone mutations invalidate `["goal", goalId, "milestones"]` + `["goals"]` (list cards show rollup progress). `listGoals()` computes `milestonesTotal` / `milestonesCompleted` via subselects; order is `year IS NULL, year DESC, created_at DESC` (dated goals first, newest year first, no-year last). `getGoal` returns `null` (not `undefined`) — React Query v5 throws on `undefined`. **Goal delete relies on FK CASCADE** — services never delete milestone rows manually; projects/tasks keep their records via `ON DELETE SET NULL`.
+* **07 — devDatabase FK pragma fix (important):** sql.js defaults `foreign_keys` OFF while tauri-plugin-sql (sqlx) defaults it ON — enabling it once at connection creation is **not enough**: `db.export()` (used by `persist()` after every write) internally closes and reopens the connection, silently resetting all connection-level pragmas. The dev engine now re-runs `PRAGMA foreign_keys = ON;` after every export. Without this, CASCADE / SET NULL worked only until the first write of a session, then deletes left orphaned rows silently. Verified with orphan-count probes (`milestones WHERE goal_id NOT IN (SELECT id FROM goals)`).

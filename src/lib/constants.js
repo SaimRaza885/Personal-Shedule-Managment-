@@ -47,6 +47,13 @@ export const MILESTONE_PERIOD = Object.freeze({
   WEEK: "week",
 });
 
+// Milestone status
+export const MILESTONE_STATUS = Object.freeze({
+  PLANNED: "planned",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+});
+
 // Focus session status
 export const FOCUS_STATUS = Object.freeze({
   STARTED: "started",
@@ -78,6 +85,7 @@ export const DEFAULT_VALUES = Object.freeze({
 // Date formats
 export const DATE_FORMATS = Object.freeze({
   DISPLAY: "MMMM d, yyyy",
+  DAY: "MMM d, yyyy",
   SHORT: "MMM d",
   ISO: "yyyy-MM-dd",
   TIME: "h:mm a",
