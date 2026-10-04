@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 0 — Foundation & Setup
-**Last completed:** None
-**Next:** 01 Project Scaffold & Design Tokens
+**Last completed:** 01 Project Scaffold & Design Tokens
+**Next:** 02 SQLite Database Foundation
 
 ---
 
@@ -16,7 +16,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 0 — Foundation & Setup
 
-* [ ] 01 Project Scaffold & Design Tokens
+* [x] 01 Project Scaffold & Design Tokens
 * [ ] 02 SQLite Database Foundation
 * [ ] 03 Tauri Desktop Foundation
 

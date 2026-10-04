@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { Play } from "lucide-react";
 
 export function Today() {
-  const [currentTask, setCurrentTask] = useState(null);
-
   // Mock data for now - will be replaced with real data from services
   const mockTask = {
     id: "1",

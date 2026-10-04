@@ -28,3 +28,6 @@ Thumbs.db
 
 # Context7 Skills (local to each machine)
 .agents/
+
+# UI verification scratch
+.verify/
