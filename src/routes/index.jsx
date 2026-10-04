@@ -13,6 +13,7 @@ import { Learning } from "@/pages/learning/Learning";
 import { Concepts } from "@/pages/concepts/Concepts";
 import { WatchLater } from "@/pages/watch-later/WatchLater";
 import { Reviews } from "@/pages/reviews/Reviews";
+import { Diary } from "@/pages/diary/Diary";
 import { Placeholder } from "@/pages/Placeholder";
 
 export const router = createBrowserRouter([
@@ -32,7 +33,7 @@ export const router = createBrowserRouter([
       { path: "/watch-later", element: <WatchLater /> },
       { path: "/ideas", element: <Ideas /> },
       { path: "/quick-capture", element: <QuickCapture /> },
-      { path: "/diary", element: <Placeholder title="Digital Diary" /> },
+      { path: "/diary", element: <Diary /> },
       { path: "/finance", element: <Placeholder title="Finance Tracker" /> },
       { path: "/reviews", element: <Reviews /> },
       { path: "/analytics", element: <Placeholder title="Analytics" /> },
