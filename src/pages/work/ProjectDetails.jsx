@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, FolderKanban } from "lucide-react";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { LoadingState } from "@/components/feedback/LoadingState";
@@ -8,16 +10,48 @@ import {
   projectStatusBadgeClass,
   projectStatusLabel,
 } from "@/components/projects/projectStatus";
+import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { Button } from "@/components/ui/button";
-import { useProject, useProjectTasks } from "@/hooks/useProjects";
+import { useGoals } from "@/hooks/useGoals";
+import { useProject, useProjectTasks, useProjects } from "@/hooks/useProjects";
+import { useCreateTask } from "@/hooks/useTasks";
+
+function friendlyError(error) {
+  return error instanceof Error
+    ? error.message
+    : "Something went wrong. Please try again.";
+}
 
 export function ProjectDetails() {
   const { id } = useParams();
   const projectQuery = useProject(id);
   const tasksQuery = useProjectTasks(id);
+  const projectsQuery = useProjects();
+  const goalsQuery = useGoals();
+  const createTask = useCreateTask();
+  const [addingTask, setAddingTask] = useState(false);
 
   const project = projectQuery.data;
   const tasks = tasksQuery.data ?? [];
+
+  const projectOptions = (projectsQuery.data ?? []).map((item) => ({
+    id: item.id,
+    name: item.name,
+  }));
+  const goalOptions = (goalsQuery.data ?? []).map((item) => ({
+    id: item.id,
+    title: item.title,
+  }));
+
+  const handleCreateTask = async (values) => {
+    try {
+      await createTask.mutateAsync(values);
+      toast.success("Task created");
+      setAddingTask(false);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
 
   const isLoading = projectQuery.isLoading || tasksQuery.isLoading;
   const isError = projectQuery.isError || tasksQuery.isError;
@@ -86,7 +120,22 @@ export function ProjectDetails() {
             </div>
           </section>
 
-          <ProjectTasks items={tasks} />
+          <ProjectTasks items={tasks} onAdd={() => setAddingTask(true)} />
+
+          {addingTask && (
+            <TaskFormDialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setAddingTask(false);
+              }}
+              mode={{ kind: "add" }}
+              projects={projectOptions}
+              goals={goalOptions}
+              defaultProjectId={project.id}
+              onSubmit={handleCreateTask}
+              isPending={createTask.isPending}
+            />
+          )}
         </>
       )}
     </div>

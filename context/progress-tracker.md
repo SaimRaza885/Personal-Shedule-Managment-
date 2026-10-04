@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 2 — Goals & Work
-**Last completed:** 08 Projects & Work
-**Next:** 09 Tasks & Task Steps
+**Last completed:** 09 Tasks & Task Steps
+**Next:** 10 Focus Sessions
 
 ---
 
@@ -30,7 +30,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 * [x] 07 Goals & Milestones
 * [x] 08 Projects & Work
-* [ ] 09 Tasks & Task Steps
+* [x] 09 Tasks & Task Steps
 
 ### Phase 3 — Focus & Execution
 
@@ -125,3 +125,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **07 — Goals data layer:** `services/goal.service.js` owns goals + milestones SQL; `hooks/useGoals.js` owns query keys `["goals"]`, `["goal", id]`, `["goal", id, "milestones"]` and one mutation per operation. Milestone mutations invalidate `["goal", goalId, "milestones"]` + `["goals"]` (list cards show rollup progress). `listGoals()` computes `milestonesTotal` / `milestonesCompleted` via subselects; order is `year IS NULL, year DESC, created_at DESC` (dated goals first, newest year first, no-year last). `getGoal` returns `null` (not `undefined`) — React Query v5 throws on `undefined`. **Goal delete relies on FK CASCADE** — services never delete milestone rows manually; projects/tasks keep their records via `ON DELETE SET NULL`.
 * **07 — devDatabase FK pragma fix (important):** sql.js defaults `foreign_keys` OFF while tauri-plugin-sql (sqlx) defaults it ON — enabling it once at connection creation is **not enough**: `db.export()` (used by `persist()` after every write) internally closes and reopens the connection, silently resetting all connection-level pragmas. The dev engine now re-runs `PRAGMA foreign_keys = ON;` after every export. Without this, CASCADE / SET NULL worked only until the first write of a session, then deletes left orphaned rows silently. Verified with orphan-count probes (`milestones WHERE goal_id NOT IN (SELECT id FROM goals)`).
 * **08 — Projects data layer:** `services/project.service.js` owns projects SQL; `hooks/useProjects.js` owns query keys `["projects"]`, `["project", id]`, `["project", projectId, "tasks"]` and one mutation per operation. `listProjects()` computes `tasksTotal` / `tasksCompleted` via subselects and orders by **status rank in JS** (`STATUS_ORDER` array from `PROJECT_STATUS`, then `rows.sort`) instead of a SQL CASE with literal status strings — code-standards forbids inline enum literals in SQL. Project delete relies on `tasks.project_id ON DELETE SET NULL`: tasks keep their records and just lose the link (the confirm copy says so). **Cross-domain invalidation:** `useUpdateGoal`/`useDeleteGoal` also invalidate `["projects"]` because project cards show the linked goal's title — verified by deleting a goal and watching project chips clear without a reload. `listProjectTasks` is read-only for now — task management is feature 09.
+* **09 — Tasks data layer:** `services/task.service.js` owns tasks + task_steps SQL; `hooks/useTasks.js` owns query keys `["tasks", status ?? "all"]` and the deliberately distinct `["task", taskId, "steps"]`, plus one mutation per operation. Sorting is `STATUS_ORDER` rank (in_progress first) then `PRIORITY_ORDER` rank, done in JS after `ORDER BY created_at DESC` (no enum literals in SQL). `setTaskStatus` is **the single implementation of task status transitions** — documented in the service; `TaskStatus.jsx` is the single toggle component and defines the not_started↔completed toggle in one place. Step reordering is not in scope for v1; new steps get `sort_order = COALESCE(MAX(sort_order), -1) + 1` via a subselect inside the INSERT. `setTaskStepCompleted` takes an explicit target state (not a toggle) so retries can never double-toggle. **Cross-domain invalidation:** task mutations invalidate `["tasks"]`, `["project"]`, `["projects"]`, `["today"]`; step mutations invalidate `["task"]`, `["tasks"]`, `["today"]` — the Today hero reads `stepsTotal`/`stepsRemaining` per scheduled task, verified live (hero showed "2 of 2 steps remaining" and the card footer updated its `0 of 2 steps` count). Task delete relies on FK cascades (`task_steps` CASCADE, schedule/top-3 rows CASCADE) — verified by deleting a task with steps and probing `task_steps` for orphans. The task form deliberately has **no schedule fields** (daily_schedules owns scheduling) and no milestone select (nothing consumes that link yet). The Today hero's Start button still logs only — the status transition it will call exists (`setTaskStatus`); focus-session wiring is feature 10.
+* **09 — Add-task entry point:** `/tasks` is the full management surface (filter, steps, edit, delete); `ProjectDetails` keeps its read-only task card but gained an "Add task" action that opens the shared `TaskFormDialog` with `defaultProjectId` pre-filled. Both surfaces call the same hook mutations, so the project view and the tasks list stay in sync via query invalidation.
