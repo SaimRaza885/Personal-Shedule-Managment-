@@ -365,6 +365,26 @@ Header `h1 text-xl font-semibold text-text-primary` "Digital Diary" + `text-sm t
 **Route (update)** — `src/routes/index.jsx`
 `/diary` swapped from Placeholder to `Diary` (the sidebar entry — "Diary" with the `FileText` icon — existed since the shell was built).
 
+### Finance section (feature 22)
+
+**TransactionCard** — `src/components/finance/TransactionCard.jsx`
+`section.flex flex-col gap-3 rounded-lg border border-border bg-surface p-5`. Top row `flex items-start justify-between gap-3`: left `flex flex-wrap items-center gap-2` with date chip `{formatDate(transaction.date)}` + optional category chip (only when non-empty, same chip classes); right signed amount `cn("shrink-0 text-sm font-semibold", transactionAmountClass(transaction.type))` showing `{isIncome ? "+" : "-"}{formatAmount(transaction.amount)}`. Optional description `p.break-words text-sm text-text-secondary`. Footer `mt-auto flex items-center justify-between gap-3 pt-1`: left `text-xs text-text-muted` "Added {formatTimestamp(transaction.createdAt)}"; right inline confirm (`confirming` state) "Remove this transaction?" + Cancel `size="xs"` + destructive `size="xs"` Remove; otherwise edit/trash icons (`Button variant="ghost" size="icon-xs"`, `size-3.5`, aria-labels "Edit transaction from {formatDate}" / "Remove transaction from {formatDate}").
+
+**TransactionFormDialog** — `src/components/finance/TransactionFormDialog.jsx`
+RHF+zod (`transactionSchema`: type enum of `TRANSACTION_TYPE`; amount string trimmed required + refine "Enter an amount greater than zero"; date required + `DATE_REGEX` "Pick a date for this transaction"; category trimmed `max(60)`; description trimmed `max(300)`). Serves add + edit (`mode` prop `{ kind: "add" } | { kind: "edit", type, amount, date, category, description }` flattened from the page). Dialog titles "New transaction" / "Edit transaction"; descriptions "Log income or an expense — keep the month's picture honest." / "Update this transaction's details." Fields: `grid grid-cols-2 gap-4` with Type `Select` (options from `TYPE_OPTIONS` via `transactionTypeLabel`, `SelectTrigger className="w-full"`, default Expense on add) + Amount `Input type="number" step="0.01" min="0" placeholder="0.00"`; Date `Input type="date"` labeled "Date" (defaults to today); Category `Input` labeled "Category (optional)"; Note `Textarea rows={2}` labeled "Note (optional)". Amount is `Number(...)`-converted on submit. Reset effect keyed on primitive deps (`[open, modeType, modeAmount, modeDate, modeCategory, modeDescription, form]`). Footer Cancel + "Add transaction" / "Save changes" with `Loader2` "Saving…".
+
+**Transaction type helper** — `src/components/finance/transactionType.js`
+Mirrors `watchStatus.js`. `transactionTypeLabel(type)` maps `TRANSACTION_TYPE.INCOME/EXPENSE` → "Income"/"Expense". `transactionAmountClass(type)` returns `text-success-foreground` for income, `text-error-foreground` otherwise (expense default). New finance UI must reuse these helpers.
+
+**Finance page** — `src/pages/finance/Finance.jsx`
+Header `h1 text-xl font-semibold text-text-primary` "Finance" + `text-sm text-text-muted` subtitle "Track income and expenses so the month's picture stays honest." + `Button size="sm"` "New transaction" (`Plus`). States: `LoadingState` "Loading your transactions…" / `ErrorState` "Couldn't load your transactions" (retry = refetch) / `EmptyState` (`Wallet`) "No transactions yet" + "Log income and expenses to see the month's picture." + New transaction action. Body: month summary card (`rounded-lg border border-border bg-surface p-5`, `h2` "This month — {MMMM yyyy}") with `grid grid-cols-3 gap-3` of local `StatTile`s (Income/Spent/Net — computed by local pure `summarizeMonth(transactions, monthKey)` skipping entries outside `yyyy-MM`), then "All transactions" `h2` + `grid grid-cols-1 gap-6 xl:grid-cols-2` of TransactionCards. Toasts: "Transaction added" / "Transaction updated" / "Transaction removed". Dialog state `{ kind: "add" } | { kind: "edit", item }`. Money formatted via `formatAmount()` (added to `src/lib/utils.js` — display only, two decimals).
+
+**Finance data layer** — `src/services/finance.service.js` + `src/hooks/useFinance.js`
+`finance.service.js` owns the `finance_transactions` SQL (see progress-tracker 22 notes); `useFinance.js` owns key `["finance"]`; `useCreateTransaction` / `useUpdateTransaction` / `useDeleteTransaction` each invalidate `["finance"]`. Entries order by `date DESC, created_at DESC`. Amounts are positive REALs — the `type` column carries the sign at display time. Components never touch SQL directly.
+
+**Route (update)** — `src/routes/index.jsx`
+`/finance` swapped from Placeholder to `Finance` (the sidebar entry — "Finance" with the `BarChart3` icon — existed since the shell was built).
+
 ### shadcn/ui primitives (generated, JS mode)
 
 Live in `src/components/ui/` (button, input, textarea, badge, card, label, select, dialog, table, tabs, dropdown-menu, form). Generated by `npx shadcn@latest add` — do not hand-edit. `cn()` imports rewritten to `@/lib/utils`. shadcn v4 emits `import { Slot } from "radix-ui"` (unified radix package) — keep the `radix-ui` and `cn` npm dependencies for future CLI adds.
