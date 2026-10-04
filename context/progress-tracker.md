@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 1 — Today & Daily Execution
-**Last completed:** 04 Today Shell & What Should I Do Now?
-**Next:** 05 Daily Schedule
+**Last completed:** 05 Daily Schedule
+**Next:** 06 Daily Top 3
 
 ---
 
@@ -23,7 +23,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 1 — Today & Daily Execution
 
 * [x] 04 Today Shell & What Should I Do Now?
-* [ ] 05 Daily Schedule
+* [x] 05 Daily Schedule
 * [ ] 06 Daily Top 3
 
 ### Phase 2 — Goals & Work
@@ -119,3 +119,5 @@ Update this file after every completed feature. Any AI agent reading this should
 * **02 — Dev database engine:** `src/lib/database.js` routes to tauri-plugin-sql inside the desktop shell and to a sql.js (SQLite WASM) engine in a plain browser, so features can be developed and verified without the Rust toolchain. The dev engine persists to localStorage and exposes the same `execute`/`select` surface. All SQL uses `?` placeholders — the `$1` style breaks sql.js. Migrations (`src/lib/migrations.js`) run once per connection and are recorded in `_migrations`.
 * **03 — Tauri scaffold:** `src-tauri/` configured for Windows (identifier `com.saimraza.personalschedule`, app data dir = `%APPDATA%/com.saimraza.personalschedule/`, `sqlite:schedule.db` preloaded). Rust plugins: sql (sqlite), notification, fs, dialog — backups/export will build on fs+dialog in feature 25. **No Rust toolchain on this machine yet**: `tauri dev`/`tauri build` cannot run; UI is verified in a browser via the sql.js engine. Before the first desktop build: install Rust, then `npm run tauri icon <png>` to generate `src-tauri/icons/`.
 * **04 — Today data flow:** `services/today.service.js` owns the SQL (schedule join + step counts via subselects, top-3 join); `hooks/useToday.js` owns TanStack Query keys `["today","schedule",date]` / `["today","top-three",date]`. Times are stored as `HH:mm` strings, so `determineNowState` compares lexicographically: "now" = the actionable block containing the current time; when none matches, the hero falls back to the next upcoming block; when none remains it shows the empty state. The Start button logs only — focus-session start is feature 10.
+* **05 — Schedule mutations:** `services/schedule.service.js` owns add/edit/remove of blocks; `hooks/useSchedule.js` owns the three mutations, each invalidating `["today"]` on success. Add creates task + `daily_schedules` row in one transaction (`planned_minutes` = block duration, synced to `tasks.planned_minutes`). Edit changes times only and re-syncs `planned_minutes`. Remove deletes only the `daily_schedules` row — the task survives as an orphan by design (the schedule is not the task's owner). `daily_schedules` is the schedule source of truth; `tasks.scheduled_date/start_time/end_time` stay NULL.
+* **05 — devDatabase `getRowsModified` fix:** sql.js resets its change counter when a statement is freed, so `db.getRowsModified()` must be read **before** `stmt.free()`. Reading it after made every UPDATE/DELETE report `rowsAffected: 0`, which broke the not-found guards in services. The engine contract now matches tauri-plugin-sql. Also: `db.export()` (used for persistence) silently ends an open transaction, so the dev engine persists only when not inside BEGIN/COMMIT — real tauri-plugin-sql handles this at the pool level, so keep mutations wrapped in transactions regardless of engine.

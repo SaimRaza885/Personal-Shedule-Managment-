@@ -37,17 +37,30 @@ async function createEngine() {
   const bytes = loadPersistedBytes();
   const db = bytes ? new SQL.Database(bytes) : new SQL.Database();
 
+  // db.export() (used by persist) cannot run mid-transaction: it silently
+  // ends the open transaction, so COMMIT then fails. Track transaction
+  // state and only persist once the database is back in autocommit mode.
+  let inTransaction = false;
+
   return {
     async execute(sql, params = []) {
       const stmt = db.prepare(sql);
+      // getRowsModified must be read before stmt.free(): freeing the
+      // statement resets the change counter, which made every UPDATE/DELETE
+      // report rowsAffected: 0 and broke not-found checks in services.
+      let rowsAffected = 0;
       try {
         stmt.bind(params);
         stmt.step();
+        rowsAffected = db.getRowsModified();
       } finally {
         stmt.free();
       }
-      persist(db);
-      return { rowsAffected: db.getRowsModified() };
+      const keyword = sql.trimStart().split(/\s+/, 1)[0].toUpperCase();
+      if (keyword === "BEGIN") inTransaction = true;
+      else if (keyword === "COMMIT" || keyword === "ROLLBACK") inTransaction = false;
+      if (!inTransaction) persist(db);
+      return { rowsAffected };
     },
 
     async select(sql, params = []) {
