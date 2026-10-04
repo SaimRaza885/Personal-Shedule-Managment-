@@ -76,6 +76,12 @@ export const CONCEPT_STATUS = Object.freeze({
   REVIEW: "review",
 });
 
+// Watch Later item status
+export const WATCH_STATUS = Object.freeze({
+  PENDING: "pending",
+  WATCHED: "watched",
+});
+
 // Idea status
 export const IDEA_STATUS = Object.freeze({
   NEW: "new",

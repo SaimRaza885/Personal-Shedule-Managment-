@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 5 — Learning
-**Last completed:** 17 Tech Concepts I Must Know
-**Next:** 18 Watch Later
+**Last completed:** 18 Watch Later
+**Next:** 19 End-of-Day Review
 
 ---
 
@@ -48,7 +48,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 * [x] 16 What I Learned
 * [x] 17 Tech Concepts I Must Know
-* [ ] 18 Watch Later
+* [x] 18 Watch Later
 
 ### Phase 6 — Reflection
 
@@ -150,3 +150,6 @@ Update this file after every completed feature. Any AI agent reading this should
 * **16 — Learning UI:** `/learning` = header ("What I Learned") + "New note" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `LearningCard`s (truncated title + `formatDate` date chip, pre-wrap content, edit/trash with the inline confirm pattern). `LearningFormDialog` (RHF+zod: title, date `Input type="date"` labeled "Learned on", content Textarea rows 5; `sm:max-w-[480px]`) serves add and edit with the primitive-dep reset; edit prefill passes flattened `{ title, date, content }`. Verified: date-DESC ordering across two notes, zod guard on empty submit, edit re-sorting the list when its date changed, delete leaving the DB with exactly the expected row.
 * **17 — Concepts data layer:** `services/concept.service.js` owns the `tech_concepts` SQL (list/create/update/delete); `hooks/useConcepts.js` owns key `["concepts"]` + one mutation per operation. The table's status has a CHECK (`not_started`/`learning`/`learned`/`review`) and `CONCEPT_STATUS` already existed in `constants.js`. `listConcepts()` sorts in JS by `STATUS_ORDER` rank — active learning first, then review, then not-started backlog, mastered last (`learning → review → not_started → learned`) — then `created_at DESC`, so the newest stays on top within each status. Update/delete use the standard `rowsAffected === 0` guard. Concepts are tracked separately from learning notes (the decision line): a note is what you figured out, a concept is what you want to know.
 * **17 — Concepts UI:** `/concepts` = header ("Tech Concepts") + "New concept" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `ConceptCard`s (title + status badge top row, `line-clamp-2` description, category chip + "Added {formatTimestamp}" meta row — chip omitted when category empty). `ConceptFormDialog` (RHF+zod: title required, category ≤60, description ≤500, status Select; `sm:max-w-[440px]`) serves add and edit with the primitive-dep reset; `conceptStatus.js` maps the four statuses to the token families (neutral/secondary, accent, success, warning). Verified: Learning ranks above Not started, edit changing status re-sorts live, category chip omission, zod guard, delete leaving exactly the expected row.
+* **18 — Watch Later data layer:** `services/watch-later.service.js` owns the `watch_later` SQL (list/create/update/`setWatchItemStatus`/delete); `hooks/useWatchLater.js` owns key `["watch-later"]` + one mutation per operation. The table stores `title`, optional `url` (`NOT NULL DEFAULT ''`), nullable `scheduled_date` (indexed by `idx_watch_later_scheduled_date`) and a `status` (`pending`/`watched` — `WATCH_STATUS` in `constants.js`). `listWatchLater()` sorts in JS: status rank pending → watched, then scheduled date **ASC** (soonest first) with a `"9999-99-99"` sentinel so unscheduled items sink to the end of the pending group, newest-first within equal keys. The card's watched/unwatched toggle uses the dedicated single-transition `setWatchItemStatus`, mirroring the `setTaskStatus` pattern. Update/delete use the standard `rowsAffected === 0` guard.
+* **18 — Watch Later UI:** `/watch-later` = header ("Watch Later", subtitle "Links worth your time — scheduled for a real moment, not an endless backlog.") + "New link" button, then `grid grid-cols-1 gap-6 xl:grid-cols-2` of `WatchLaterCard`s (truncated title + status badge, URL anchor with `target="_blank" rel="noreferrer"` shown only when a URL exists, "Scheduled {formatDate}" chip when dated + "Added {formatTimestamp}", and a Check/Undo2 toggle + edit/trash with the inline confirm "Remove this item?"). `WatchLaterFormDialog` (RHF+zod: title required, url optional validated via `URL.canParse` → "Enter a valid link (e.g. https://…)", scheduledDate optional `Input type="date"`, status Select; `sm:max-w-[440px]`) serves add and edit with the primitive-dep reset. Verified: scheduled pending item ranked above undated pending item, watched toggle re-sorting below pending, zod URL guard keeping the dialog open, edit prefill (title/url/date/status) + status change re-sorting live, delete leaving exactly one row in the DB.
+* **18 — Deferred by design:** the Phase 5 decision line says saved links "can become actionable tasks" — the `watch_later` schema has no task link column, so conversion stays manual for now. Opening links in the system browser (tauri-plugin-opener) is external-link handling, deferred to the hardening phase (26/27). Neither invents schema nor plugins prematurely.
