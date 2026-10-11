@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import lumiroIcon from "../../assets/lumiro-icon.png";
 import {
   Calendar,
   Target,
@@ -36,8 +37,9 @@ const navItems = [
 export function Sidebar() {
   return (
     <aside className="w-64 bg-surface border-r border-border h-screen sticky top-0">
-      <div className="p-4">
-        <h1 className="text-xl font-semibold text-text-primary">Schedule</h1>
+      <div className="p-4 flex items-center gap-2.5">
+        <img src={lumiroIcon} alt="Lumiro Desk" className="size-7" />
+        <h1 className="text-lg font-semibold text-text-primary">Lumiro Desk</h1>
       </div>
       <nav className="px-2">
         <ul className="space-y-1">

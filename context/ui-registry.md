@@ -24,7 +24,7 @@ After building any component — update this file with the component name, file 
 Root layout: `min-h-screen bg-background` + flex row; sidebar + `flex-1 flex flex-col` containing Topbar and `main.flex-1 p-6` rendering `<Outlet />`.
 
 **Sidebar** — `src/components/layout/Sidebar.jsx`
-`aside.w-64 bg-surface border-r border-border h-screen sticky top-0`. App title: `text-xl font-semibold text-text-primary`.
+`aside.w-64 bg-surface border-r border-border h-screen sticky top-0`. Header (feature 29): `p-4 flex items-center gap-2.5` with app mark `<img src={lumiroIcon} alt="Lumiro Desk" className="size-7" />` (`src/assets/lumiro-icon.png`) + title `text-lg font-semibold text-text-primary` "Lumiro Desk".
 Nav item base: `flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors`.
 Active: `bg-accent-light text-accent`. Inactive: `text-text-secondary hover:bg-surface-secondary`. Icons: `lucide-react` at `size-4`.
 
@@ -438,6 +438,14 @@ Catch-all route. Wrapper `flex min-h-[60vh] items-center justify-center` around 
 
 **External link opener** — `src/lib/opener.js`
 Framework-free helper module (not a component): `openExternal(url)` returns a Promise. Tauri path uses `@tauri-apps/plugin-opener`'s `openUrl`; browser path uses `window.open` resolved synchronously off the click (keeps popup blockers quiet) and rejects with "Could not open the link." when blocked. Rust side: `tauri-plugin-opener = "2"` in Cargo.toml, `init()` registered, capabilities `opener:default` + `opener:allow-open-url`. `tauri-plugin-single-instance = "2"` was also added so a second launch focuses the existing window instead of opening a duplicate. Consumer: `WatchLaterCard` (above).
+
+### Branding (feature 29)
+
+**App rename — "Lumiro Desk"**
+`tauri.conf.json` (`productName` + window title), `index.html` (`<title>`), and the Sidebar header all read "Lumiro Desk". The bundle identifier (`com.saimraza.personalschedule`) is deliberately unchanged — the SQLite path is keyed to it (see progress-tracker 29).
+
+**App mark (LD monogram)**
+Source art committed at `src-tauri/app-icon.png` (932×932, alpha-processed); in-app usage via `src/assets/lumiro-icon.png` (Sidebar `<img className="size-7">`). Icons regenerate with `npx tauri icon src-tauri/app-icon.png` → `src-tauri/icons/*` (Windows set only; `icon.ico` is the file `tauri.conf.json` references). Any new in-app brand mark reuses `src/assets/lumiro-icon.png` — never re-crop the original.
 
 ### shadcn/ui primitives (generated, JS mode)
 
