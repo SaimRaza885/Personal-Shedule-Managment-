@@ -14,7 +14,13 @@ import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { Button } from "@/components/ui/button";
 import { useGoals } from "@/hooks/useGoals";
 import { useProject, useProjectTasks, useProjects } from "@/hooks/useProjects";
-import { useCreateTask } from "@/hooks/useTasks";
+import {
+  useCreateTask,
+  useDeleteTask,
+  useSetTaskStatus,
+  useUpdateTask,
+} from "@/hooks/useTasks";
+import { TASK_STATUS } from "@/lib/constants";
 
 function friendlyError(error) {
   return error instanceof Error
@@ -29,7 +35,12 @@ export function ProjectDetails() {
   const projectsQuery = useProjects();
   const goalsQuery = useGoals();
   const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
+  const setTaskStatus = useSetTaskStatus();
+
   const [addingTask, setAddingTask] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   const project = projectQuery.data;
   const tasks = tasksQuery.data ?? [];
@@ -48,6 +59,42 @@ export function ProjectDetails() {
       await createTask.mutateAsync(values);
       toast.success("Task created");
       setAddingTask(false);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
+  const handleUpdateTask = async (values) => {
+    if (!editingTask) return;
+    try {
+      await updateTask.mutateAsync({ id: editingTask.id, ...values });
+      toast.success("Task updated");
+      setEditingTask(null);
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
+  const handleDeleteTask = async (task) => {
+    try {
+      await deleteTask.mutateAsync({ id: task.id });
+      toast.success("Task removed");
+    } catch (error) {
+      toast.error(friendlyError(error));
+    }
+  };
+
+  const handleToggleComplete = async (task) => {
+    const nextStatus =
+      task.status === TASK_STATUS.COMPLETED
+        ? TASK_STATUS.NOT_STARTED
+        : TASK_STATUS.COMPLETED;
+
+    try {
+      await setTaskStatus.mutateAsync({ id: task.id, status: nextStatus });
+      toast.success(
+        nextStatus === TASK_STATUS.COMPLETED ? "Task completed" : "Task reopened",
+      );
     } catch (error) {
       toast.error(friendlyError(error));
     }
@@ -120,7 +167,14 @@ export function ProjectDetails() {
             </div>
           </section>
 
-          <ProjectTasks items={tasks} onAdd={() => setAddingTask(true)} />
+          <ProjectTasks
+            items={tasks}
+            onAdd={() => setAddingTask(true)}
+            onEdit={setEditingTask}
+            onDelete={handleDeleteTask}
+            onToggleComplete={handleToggleComplete}
+            isPending={setTaskStatus.isPending || deleteTask.isPending}
+          />
 
           {addingTask && (
             <TaskFormDialog
@@ -134,6 +188,20 @@ export function ProjectDetails() {
               defaultProjectId={project.id}
               onSubmit={handleCreateTask}
               isPending={createTask.isPending}
+            />
+          )}
+
+          {editingTask && (
+            <TaskFormDialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setEditingTask(null);
+              }}
+              mode={{ kind: "edit", task: editingTask }}
+              projects={projectOptions}
+              goals={goalOptions}
+              onSubmit={handleUpdateTask}
+              isPending={updateTask.isPending}
             />
           )}
         </>

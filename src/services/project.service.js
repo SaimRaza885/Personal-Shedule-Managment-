@@ -89,7 +89,7 @@ export async function listProjectTasks(projectId) {
          created_at AS createdAt, updated_at AS updatedAt
        FROM tasks
        WHERE project_id = ?
-       ORDER BY scheduled_date IS NULL, scheduled_date, created_at DESC`,
+       ORDER BY scheduled_date IS NULL, scheduled_date, created_at ASC`,
       [projectId],
     );
   } catch (error) {
